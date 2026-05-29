@@ -205,7 +205,8 @@ button:disabled{filter:grayscale(.4) brightness(.7);cursor:not-allowed}
         <span style="color:var(--yellow)">A</span> shift up &nbsp;
         <span style="color:var(--yellow)">Z</span> shift down<br/>
         <span style="color:var(--yellow)">Space</span> boost (when meter full)<br/>
-        Avoid traffic. Near misses fill boost. 3 lives.
+        Avoid traffic. Near misses fill boost. 3 lives.<br/>
+        <span style="color:var(--muted)">Gamepad: LStick steer · RT/A accel · LT/B brake · X boost</span>
       </div>
     </section>
 
@@ -553,27 +554,53 @@ function sfxPickup(){[523,659,784].forEach((f,i)=>playTone(f,0.1,'sine',0.22,i*0
 function sfxFinish(){[440,550,660,880].forEach((f,i)=>playTone(f,0.15,'sine',0.28,i*0.09))}
 function sfxWin(){[523,659,784,1047].forEach((f,i)=>playTone(f,0.2,'sine',0.33,i*0.1))}
 function sfxLose(){[330,277,220].forEach((f,i)=>playTone(f,0.22,'square',0.17,i*0.12))}
+function sfxHydroplaneSound(){playNoise(0.18,0.2);playTone(200,0.25,'sawtooth',0.12,0.05)}
+function sfxDrift(){playNoise(0.09,0.14)}
 el('soundBtn').onclick=()=>{
   initAudio();soundEnabled=!soundEnabled;
   el('soundBtn').textContent=soundEnabled?'🔊 Sound On':'🔇 Sound Off';
   if(soundEnabled)sfxClick()
 };
 
+// ─── Gamepad ─────────────────────────────────────────────────────────────────
+const DEADZONE=0.15;
+let gpState={steer:0,accel:false,brake:false,boost:false};
+window.addEventListener('gamepadconnected',e=>{
+  el('gamepadStatus').textContent='Gamepad: connected — '+(e.gamepad.id||'unknown').slice(0,30);
+  el('gamepadStatus').style.color='var(--ok)';
+});
+window.addEventListener('gamepaddisconnected',()=>{
+  el('gamepadStatus').textContent='Gamepad: disconnected';
+  el('gamepadStatus').style.color='';
+});
+function pollGamepad(){
+  if(!navigator.getGamepads)return;
+  const pads=navigator.getGamepads();
+  let pad=null;
+  for(let i=0;i<pads.length;i++){if(pads[i]?.connected){pad=pads[i];break;}}
+  if(!pad){gpState={steer:0,accel:false,brake:false,boost:false};return;}
+  const ax=pad.axes[0]||0;
+  gpState.steer=Math.abs(ax)>DEADZONE?ax:0;
+  gpState.accel=(pad.buttons[7]?.value>0.1)||!!(pad.buttons[0]?.pressed);
+  gpState.brake=(pad.buttons[6]?.value>0.1)||!!(pad.buttons[1]?.pressed);
+  gpState.boost=!!(pad.buttons[2]?.pressed)||!!(pad.buttons[3]?.pressed);
+}
+
 // ─── Input ────────────────────────────────────────────────────────────────────
-// Arcade keys: Arrow keys drive, A/Z shift gears, Space = boost
+// Arcade keys: Arrow keys + W/S drive, A/Z shift gears, Space = boost
 const keys={ArrowUp:false,ArrowDown:false,ArrowLeft:false,ArrowRight:false,Space:false};
 
 window.addEventListener('keydown',e=>{
   if(document.activeElement?.tagName==='INPUT')return;
-  // Prevent page scroll on arrow/space
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();
 
-  // Splash advance
   if(gameState==='splash'){startFromSplash();return}
 
-  // Keys object
   if(e.code in keys)keys[e.code]=true;
   if(e.key===' ')keys.Space=true;
+  // W/S aliases
+  if(e.code==='KeyW')keys.ArrowUp=true;
+  if(e.code==='KeyS')keys.ArrowDown=true;
 
   // Gear shifting (not on repeat)
   if(gameState==='playing'&&!e.repeat){
@@ -600,6 +627,8 @@ window.addEventListener('keydown',e=>{
 window.addEventListener('keyup',e=>{
   if(e.code in keys)keys[e.code]=false;
   if(e.key===' ')keys.Space=false;
+  if(e.code==='KeyW')keys.ArrowUp=false;
+  if(e.code==='KeyS')keys.ArrowDown=false;
 });
 
 // Touch controls
@@ -607,6 +636,7 @@ function bindTouch(id,key){
   const el2=el(id);if(!el2)return;
   el2.addEventListener('touchstart',e=>{e.preventDefault();keys[key]=true},{passive:false});
   el2.addEventListener('touchend',e=>{e.preventDefault();keys[key]=false},{passive:false});
+  el2.addEventListener('touchcancel',e=>{e.preventDefault();keys[key]=false},{passive:false});
 }
 bindTouch('btn-up','ArrowUp');bindTouch('btn-down','ArrowDown');
 bindTouch('btn-left','ArrowLeft');bindTouch('btn-right','ArrowRight');
@@ -642,15 +672,17 @@ let lastPublish=0;
 // Entities / world arrays
 let entities=[];
 let pickups=[];
+let puddles=[];   // Phase 2: rain puddles
+let birds=[];     // Phase 2: bird flocks
 let particles=[];
 let floatingTexts=[];
-let scenery=[];
-// Weather stub (deferred full implementation to Phase 2)
-let weather={type:'clear',intensity:0,timer:15,drops:[]};
+let scenery=[];   // Phase 2: parallax trees
+let weather={type:'clear',intensity:0,timer:12,drops:[]};
 
 let bgOffsetY=0;
 let cameraSpeed=0;
 let timeSinceLastSpawn=0;
+let loneCarTimer=10.0; // Phase 2: spacing timer
 
 // Ghost for multiplayer opponent
 const ghost={x:400,y:500,speed:0,gear:1,visible:false};
@@ -728,6 +760,49 @@ function drawGasCan(x,y){
   ctx.restore();
 }
 
+// Phase 2: Bird drawing
+function drawBird(x,y,wingTimer){
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.strokeStyle='#fff';ctx.lineWidth=2;
+  ctx.beginPath();
+  const flap=Math.sin(wingTimer)*5;
+  ctx.moveTo(-6,-flap);ctx.lineTo(0,0);ctx.lineTo(6,-flap);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// Phase 2: Puddle drawing
+function drawPuddle(x,y,width){
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.fillStyle='rgba(20,40,80,0.6)';
+  ctx.beginPath();
+  ctx.ellipse(0,0,width,width/2,0,0,Math.PI*2);
+  ctx.fill();
+  // Reflection shimmer
+  ctx.fillStyle='rgba(255,255,255,0.15)';
+  ctx.beginPath();
+  ctx.ellipse(-width*0.2,-width*0.1,width*0.4,width*0.15,0,0,Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+}
+
+// Phase 2: Scenery tree/bush
+function spawnScenery(randomY=false){
+  const isLeft=Math.random()>0.5;
+  const x=isLeft
+    ?Math.random()*(ROAD_X-50)
+    :ROAD_X+ROAD_W+20+Math.random()*(800-ROAD_X-ROAD_W-70);
+  const y=randomY?Math.random()*600:-100;
+  const scale=0.5+Math.random()*1;
+  scenery.push({
+    x,y,w:40*scale,h:40*scale,
+    speedMultiplier:0.5+Math.random()*0.5,
+    color:Math.random()>0.2?'#2e8b57':'#556b2f'
+  });
+}
+
 function createParticles(x,y,color,count){
   for(let i=0;i<count;i++){
     particles.push({x,y,vx:(Math.random()-0.5)*200,vy:(Math.random()-0.5)*200,life:0.5+Math.random()*0.5,color});
@@ -748,9 +823,12 @@ function initGame(){
     emergencyGasTimer:0,
     finished:false
   };
-  entities=[];pickups=[];particles=[];floatingTexts=[];scenery=[];
-  weather={type:'clear',intensity:0,timer:15,drops:[]};
-  bgOffsetY=0;cameraSpeed=0;timeSinceLastSpawn=0;
+  entities=[];pickups=[];puddles=[];birds=[];particles=[];floatingTexts=[];
+  scenery=[];
+  weather={type:'clear',intensity:0,timer:12+Math.random()*8,drops:[]};
+  bgOffsetY=0;cameraSpeed=0;timeSinceLastSpawn=0;loneCarTimer=10.0;
+  // Init scenery
+  for(let i=0;i<10;i++)spawnScenery(true);
 }
 
 // ─── Entity spawning ──────────────────────────────────────────────────────────
@@ -805,6 +883,9 @@ function handleCrash(isSpinout=false){
 function update(dt){
   if(gameState!=='playing')return;
 
+  // Poll gamepad
+  pollGamepad();
+
   // Gear / speed
   const currentGear=gearStats[player.gear];
   player.maxSpeed=currentGear.max;
@@ -818,13 +899,16 @@ function update(dt){
       if(Math.random()<0.3)createParticles(player.x+16,player.y+64,'#00ffff',2);
       if(player.boostTimer<=0)player.isBoosting=false;
     }else{
-      if(keys.Space&&player.boostMeter>=100){
+      const wantsBoost=(keys.Space||gpState.boost)&&player.boostMeter>=100;
+      if(wantsBoost){
         player.isBoosting=true;player.boostTimer=3.0;player.boostMeter=0;
         createParticles(player.x+16,player.y+64,'#00ffff',20);
         sfxBoost();
       }
-      if(keys.ArrowUp)player.speed+=player.accel*dt;
-      else if(keys.ArrowDown)player.speed-=1200*dt;
+      const accel=keys.ArrowUp||gpState.accel;
+      const brake=keys.ArrowDown||gpState.brake;
+      if(accel)player.speed+=player.accel*dt;
+      else if(brake)player.speed-=1200*dt;
       else player.speed-=100*dt;
 
       if(player.speed>player.maxSpeed)player.speed-=500*dt;
@@ -833,7 +917,7 @@ function update(dt){
       if(player.speed>5){
         if(player.gear===1&&player.speed>=420)wrongGear=true;
         else if(player.gear===2&&player.speed<=400){wrongGear=true;player.accel=50;}
-      }else if(player.speed<=5&&player.gear>1&&keys.ArrowUp){wrongGear=true;player.accel=50;}
+      }else if(player.speed<=5&&player.gear>1&&(keys.ArrowUp||gpState.accel)){wrongGear=true;player.accel=50;}
     }
   }
 
@@ -849,12 +933,14 @@ function update(dt){
   player.speed=Math.max(0,player.speed);
   cameraSpeed=player.speed;
 
-  // Steering
+  // Steering (keyboard + gamepad; rain reduces handling)
   if(player.speed>0&&player.invulnerable<=0){
+    const rainPenalty=1-(weather.intensity*0.45);
     const speedFactor=Math.max(0.5,1.3-(player.speed/1000));
-    const turnSpeed=440*dt*speedFactor;
-    if(keys.ArrowLeft)player.x-=turnSpeed;
-    if(keys.ArrowRight)player.x+=turnSpeed;
+    const steerAmt=Math.abs(gpState.steer)>DEADZONE?Math.abs(gpState.steer):1;
+    const turnSpeed=440*dt*speedFactor*rainPenalty;
+    if(keys.ArrowLeft||gpState.steer<0)player.x-=turnSpeed*steerAmt;
+    if(keys.ArrowRight||gpState.steer>0)player.x+=turnSpeed*steerAmt;
   }
   player.x=Math.max(ROAD_X,Math.min(player.x,ROAD_X+ROAD_W-player.w));
 
@@ -908,6 +994,88 @@ function update(dt){
   // Camera
   bgOffsetY+=cameraSpeed*dt;
   if(bgOffsetY>100)bgOffsetY-=100;
+
+  // ── Phase 2: Weather system ─────────────────────────────────────────────────
+  weather.timer-=dt;
+  if(weather.timer<=0){
+    if(weather.type==='clear'){
+      weather.type='rain';
+      weather.timer=5+Math.random()*5;
+      floatingTexts.push({text:'RAIN!',x:400,y:200,timer:2.0,color:'#87ceeb'});
+    }else{
+      weather.type='clear';
+      weather.timer=12+Math.random()*10;
+    }
+  }
+  if(weather.type==='rain'&&weather.intensity<1){
+    weather.intensity=Math.min(1,weather.intensity+dt*0.5);
+  }else if(weather.type==='clear'&&weather.intensity>0){
+    weather.intensity=Math.max(0,weather.intensity-dt*0.2);
+  }
+  if(weather.intensity>0){
+    const dropsToSpawn=Math.floor(weather.intensity*10);
+    for(let i=0;i<dropsToSpawn;i++){
+      weather.drops.push({x:Math.random()*1200-200,y:-20,length:15+Math.random()*25,speed:800+Math.random()*500});
+    }
+    // Spawn puddles on road during rain
+    if(Math.random()<weather.intensity*0.015){
+      const pWidth=15+Math.random()*20;
+      const px=ROAD_X+pWidth+Math.random()*(ROAD_W-pWidth*2);
+      puddles.push({x:px,y:-100,w:pWidth});
+    }
+  }
+  for(let i=weather.drops.length-1;i>=0;i--){
+    const d=weather.drops[i];
+    d.y+=d.speed*dt;
+    d.x-=(d.speed*0.2)*dt;
+    if(d.y>650)weather.drops.splice(i,1);
+  }
+
+  // ── Phase 2: Scenery ─────────────────────────────────────────────────────────
+  if(Math.random()<0.05)spawnScenery();
+  for(let i=scenery.length-1;i>=0;i--){
+    scenery[i].y+=cameraSpeed*scenery[i].speedMultiplier*dt;
+    if(scenery[i].y>700)scenery.splice(i,1);
+  }
+
+  // ── Phase 2: Birds ────────────────────────────────────────────────────────────
+  if(Math.random()<0.008){
+    const flockSize=3+Math.floor(Math.random()*5);
+    const baseY=250+Math.random()*300;
+    const fromLeft=Math.random()>0.5;
+    const vxBase=80+Math.random()*80;
+    for(let i=0;i<flockSize;i++){
+      birds.push({
+        x:fromLeft?(-50-Math.random()*100):(850+Math.random()*100),
+        y:baseY+(Math.random()-0.5)*60,
+        vx:fromLeft?(vxBase+(Math.random()-0.5)*20):(-(vxBase+(Math.random()-0.5)*20)),
+        vy:(Math.random()-0.5)*10,
+        wingTimer:Math.random()*10
+      });
+    }
+  }
+  for(let i=birds.length-1;i>=0;i--){
+    const b=birds[i];
+    b.x+=b.vx*dt;
+    b.y+=(b.vy-cameraSpeed*0.1)*dt;
+    b.wingTimer+=dt*15;
+    if(b.x>950||b.x<-150||b.y<-100||b.y>700)birds.splice(i,1);
+  }
+
+  // ── Phase 2: Puddles ─────────────────────────────────────────────────────────
+  for(let i=puddles.length-1;i>=0;i--){
+    const p=puddles[i];
+    p.y+=cameraSpeed*dt;
+    if(player.invulnerable<=0&&!player.isBoosting){
+      if(Math.abs((player.x+16)-p.x)<(16+p.w*0.8)&&Math.abs((player.y+32)-p.y)<(32+p.w*0.4)){
+        floatingTexts.push({text:'HYDROPLANE! -1 FUEL',x:player.x+16,y:player.y-20,timer:2.0,color:'#e53e3e'});
+        sfxHydroplaneSound();
+        handleCrash(true);
+        puddles.splice(i,1);continue;
+      }
+    }
+    if(p.y>700)puddles.splice(i,1);
+  }
 
   // Spawn traffic
   const baseSpawnRate=0.03+(player.distance/250000);
@@ -999,6 +1167,14 @@ function draw(){
   ctx.fillStyle='#4CAF50';
   ctx.fillRect(0,0,800,600);
 
+  // Phase 2: Scenery — deep layer (behind road)
+  scenery.forEach(s=>{
+    if(s.speedMultiplier<0.8){
+      ctx.fillStyle=s.color;
+      ctx.fillRect(s.x,s.y,s.w,s.h);
+    }
+  });
+
   // Road
   ctx.fillStyle='#333';
   ctx.fillRect(ROAD_X,0,ROAD_W,600);
@@ -1019,6 +1195,19 @@ function draw(){
     ctx.fillRect(ROAD_X+ROAD_W/2-2,y,4,50);
     ctx.fillRect(ROAD_X+ROAD_W*0.75-2,y,4,50);
   }
+
+  // Phase 2: Puddles (on road surface, under cars)
+  puddles.forEach(p=>drawPuddle(p.x,p.y,p.w));
+
+  // Phase 2: Scenery — near layer (in front of road)
+  scenery.forEach(s=>{
+    if(s.speedMultiplier>=0.8){
+      ctx.fillStyle=s.color;
+      ctx.beginPath();
+      ctx.arc(s.x+s.w/2,s.y+s.h/2,s.w/2,0,Math.PI*2);
+      ctx.fill();
+    }
+  });
 
   // Gas cans
   pickups.forEach(p=>drawGasCan(p.x,p.y));
@@ -1062,6 +1251,25 @@ function draw(){
         ctx.fillRect(player.x+20,player.y+player.h,4,Math.random()*20);
       }
     }
+  }
+
+  // Phase 2: Birds — highest layer
+  birds.forEach(b=>drawBird(b.x,b.y,b.wingTimer));
+
+  // Phase 2: Rain overlay
+  if(weather.intensity>0){
+    // Blue tint
+    ctx.fillStyle=`rgba(10,30,70,${0.4*weather.intensity})`;
+    ctx.fillRect(0,0,800,600);
+    // Rain drops
+    ctx.strokeStyle=`rgba(180,200,255,${0.5*weather.intensity})`;
+    ctx.lineWidth=1.5;
+    ctx.beginPath();
+    weather.drops.forEach(d=>{
+      ctx.moveTo(d.x,d.y);
+      ctx.lineTo(d.x-d.length*0.2,d.y+d.length);
+    });
+    ctx.stroke();
   }
 
   // Floating texts
