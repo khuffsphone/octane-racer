@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Octane Street Racer — Firebase Lobby Prototype</title>
+<style>
+:root{--bg:#070b14;--panel:#0d1730ee;--line:#2a3f70;--text:#e8f1ff;--muted:#9cb1d8;--cyan:#36eaff;--pink:#ff3fb4;--yellow:#ffd166;--ok:#65f59a;--bad:#ff6b6b}
+*{box-sizing:border-box}
+body{margin:0;color:var(--text);font-family:Inter,'Segoe UI',system-ui,sans-serif;background:radial-gradient(900px 460px at 85% 0,#36eaff22,transparent),radial-gradient(800px 500px at 0 100%,#ff3fb422,transparent),linear-gradient(#0d1730,#070b14);min-height:100vh}
+.app{max-width:1220px;margin:0 auto;padding:16px;display:grid;grid-template-columns:360px 1fr;gap:14px}
+@media(max-width:980px){.app{grid-template-columns:1fr}}
+.panel{background:linear-gradient(#111a30f5,var(--panel));border:1px solid var(--line);border-radius:16px;box-shadow:0 18px 40px #0008}
+.sidebar{padding:14px;display:flex;flex-direction:column;gap:10px}
+.section{border:1px solid #9cb1d844;border-radius:12px;padding:12px;background:#080d199e}
+h1{margin:0;font-size:1.25rem;letter-spacing:.08em;text-transform:uppercase;text-shadow:0 0 18px #36eaff77}
+h2{margin:0 0 8px;color:var(--cyan);font-size:.9rem;letter-spacing:.08em;text-transform:uppercase}
+.row{display:flex;gap:8px;align-items:center}
+input,button{height:40px;border-radius:10px;font:inherit}
+input{width:100%;border:1px solid #365089;background:#0d1730;color:var(--text);padding:0 10px;text-transform:uppercase}
+button{border:0;padding:0 14px;font-weight:800;cursor:pointer;background:linear-gradient(120deg,var(--cyan),#89f5ff);color:#071124;text-transform:uppercase}
+.alt{background:linear-gradient(120deg,#ff79cc,var(--pink));color:white}
+.ghost{background:#142340;color:var(--text);border:1px solid #49629b}
+button:disabled{filter:grayscale(.4) brightness(.7);cursor:not-allowed}
+.pill{display:inline-flex;gap:7px;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid #36eaff80;background:#36eaff1a;font-size:.82rem}
+.dot{width:8px;height:8px;border-radius:50%;background:#ffbf47;box-shadow:0 0 10px #ffbf47}
+.dot.ok{background:var(--ok);box-shadow:0 0 10px var(--ok)}
+.players{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.players li{display:flex;justify-content:space-between;gap:8px;padding:9px;border-radius:9px;background:#14223eb8;border:1px solid #9cb1d83d}
+.tiny{font-size:.78rem;color:#b9c7e4;line-height:1.45}
+.ready{color:var(--ok);font-weight:800}
+.err{color:var(--bad)}
+.stage{position:relative;padding:10px;min-height:520px}
+canvas{width:100%;max-width:840px;aspect-ratio:4/3;display:block;margin:0 auto;border-radius:14px;border:1px solid #27406e;background:#111;box-shadow:0 0 30px #36eaff24}
+.hud{position:absolute;top:18px;left:20px;right:20px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-weight:800;text-shadow:0 2px 8px black;pointer-events:none}
+.countdown,.gameover{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+.countdown strong{font-size:clamp(2.4rem,9vw,5rem);color:var(--yellow);text-shadow:0 0 24px #ffd166aa}
+.gameover{display:none}
+.gameover .card{pointer-events:auto;background:#080d19f0;padding:18px;border:1px solid #48639e;border-radius:14px;text-align:center;min-width:300px;box-shadow:0 16px 45px #0009}
+.kbd{color:var(--yellow)}
+#soundBtn{width:100%}
+#gamepadStatus{font-size:.75rem;color:var(--muted);padding:5px 10px;border-radius:8px;background:#080d199e;border:1px solid #9cb1d844}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="panel sidebar">
+    <h1>Octane Street Racer</h1>
+    <div class="tiny">Arcade lobby + race-state sync prototype. Firebase is not authoritative netcode.</div>
+    <div class="pill"><span id="authDot" class="dot"></span><span id="authStatus">Auth pending…</span></div>
+
+    <section class="section"><h2>Pilot</h2>
+      <input id="nameInput" maxlength="20" placeholder="Driver name" value="Rookie"/>
+    </section>
+
+    <section class="section"><h2>Multiplayer Lobby</h2>
+      <div class="row" style="margin-bottom:8px"><button id="createBtn">Create Room</button></div>
+      <div class="row" style="margin-bottom:8px"><input id="joinCodeInput" maxlength="6" placeholder="Room code"/><button id="joinBtn" class="alt">Join</button></div>
+      <div class="row"><button id="readyBtn" class="ghost" disabled>Ready Up</button><button id="leaveBtn" class="ghost" disabled>Leave</button></div>
+      <div class="tiny" style="margin-top:8px">Room: <b id="roomCodeLabel">—</b></div>
+      <div class="tiny" style="margin-top:6px">Prototype limitation: clients publish their own race state and finish data. Useful for demos, not cheat-proof competitive play.</div>
+    </section>
+
+    <section class="section"><h2>Drivers</h2>
+      <ul id="playersList" class="players"></ul>
+      <div id="lobbyMsg" class="tiny" style="margin-top:8px">No room joined.</div>
+    </section>
+
+    <section class="section"><h2>Controls</h2>
+      <div class="tiny">
+        <span class="kbd">W / ↑</span> accelerate &nbsp; <span class="kbd">S / ↓</span> brake<br/>
+        <span class="kbd">A / D / ← →</span> steer<br/>
+        <span class="kbd">Space</span> boost &nbsp; <span class="kbd">Shift</span> drift &nbsp; <span class="kbd">R</span> reset<br/>
+        Gamepad optional — LStick steer · RT/A accel · LT/B brake · X/□ boost · LB drift
+      </div>
+    </section>
+
+    <section class="section"><h2>Audio</h2>
+      <button id="soundBtn" class="ghost">🔇 Sound Off</button>
+    </section>
+
+    <div id="gamepadStatus">Gamepad: not detected</div>
+    <div id="errorMsg" class="tiny err"></div>
+  </aside>
+
+  <main class="panel stage">
+    <div class="hud">
+      <div id="hudSpeed">Speed: 0</div>
+      <div id="hudBoost" style="color:var(--cyan)">⚡ 100%</div>
+      <div id="hudProgress">Progress: 0%</div>
+      <div id="hudState">State: Lobby</div>
+    </div>
+    <canvas id="gameCanvas" width="960" height="720"></canvas>
+    <div id="countdown" class="countdown"><strong></strong></div>
+    <div id="gameover" class="gameover">
+      <div class="card">
+        <h3 id="resultTitle" style="margin:0 0 6px">Race Over</h3>
+        <div id="resultText" class="tiny">Waiting…</div>
+        <button id="closeResultBtn" class="ghost" style="margin-top:12px">Close</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script type="module">
+// TODO(modules): split Firebase room service, lobby UI, renderer, input, and game loop
+// into separate files after the prototype stabilizes.
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
+import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
+import { getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, onSnapshot, collection, getDocs, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+
+// Firebase setup: create a Firebase project, add a Web App, paste config below,
+// enable Anonymous Auth, and enable Firestore. Rules here are prototype-only.
+const firebaseConfig={apiKey:'YOUR_API_KEY',authDomain:'YOUR_PROJECT.firebaseapp.com',projectId:'YOUR_PROJECT_ID',storageBucket:'YOUR_PROJECT.appspot.com',messagingSenderId:'YOUR_SENDER_ID',appId:'YOUR_APP_ID'};
+const isConfigured=firebaseConfig.apiKey&&firebaseConfig.apiKey!=='YOUR_API_KEY';
+
+// ─── Element refs ────────────────────────────────────────────────────────────
+const el=id=>document.getElementById(id);
+const authDot=el('authDot'),authStatus=el('authStatus'),errorMsg=el('errorMsg');
+const nameInput=el('nameInput'),joinCodeInput=el('joinCodeInput');
+const roomCodeLabel=el('roomCodeLabel'),playersList=el('playersList'),lobbyMsg=el('lobbyMsg');
+const readyBtn=el('readyBtn'),leaveBtn=el('leaveBtn');
+const countdownText=el('countdown').querySelector('strong');
+const gameover=el('gameover'),resultTitle=el('resultTitle'),resultText=el('resultText');
+const hudSpeed=el('hudSpeed'),hudBoost=el('hudBoost'),hudProgress=el('hudProgress'),hudState=el('hudState');
+const canvas=el('gameCanvas'),ctx=canvas.getContext('2d');
+const gamepadStatusEl=el('gamepadStatus');
+
+// ─── Firebase state ──────────────────────────────────────────────────────────
+let app=null,auth=null,db=null,uid=null;
+let roomCode=null,roomData=null,me=null;
+let roomUnsub=null,playersUnsub=null,opponentStateUnsub=null;
+let firebaseReady=false,raceStartTimeout=null,countdownIntervalId=null,localRaceStarted=false;
+
+// Asset Ingestion
+const assetState = {
+  manifest: null,
+  images: {},
+  audio: {},
+  ready: false,
+  errors: []
+};
+
+function getAssetBase() {
+  return location.pathname.includes('/experiments/octane-street-racer/')
+    ? './assets/'
+    : './experiments/octane-street-racer/assets/';
+}
+
+function loadAssetManifest() {
+  fetch(getAssetBase() + 'asset-manifest.json')
+    .then(r => r.json())
+    .then(data => {
+      assetState.manifest = data;
+      console.log('Asset manifest loaded');
+      preloadAssets();
+    })
+    .catch(e => {
+      console.warn('Asset manifest missing or invalid, using canvas fallback primitives.', e);
+      let st = document.getElementById('assetStatusLabel');
+      if(st) st.textContent = 'Assets: placeholders';
+    });
+}
+
+function loadImageAsset(key, path) {
+  if (!path) return;
+  const img = new Image();
+  img.onload = () => { assetState.images[key] = img; };
+  img.onerror = () => { console.warn('Missing image asset:', path); };
+  img.src = getAssetBase() + path;
+}
+
+function loadAudioAsset(key, path) {
+  if (!path) return;
+  const audio = new Audio();
+  audio.src = getAssetBase() + path;
+  audio.preload = 'auto';
+  audio.onerror = () => { console.warn('Missing audio asset:', path); };
+  assetState.audio[key] = audio;
+}
+
+function preloadAssets() {
+  if (!assetState.manifest) return;
+  const { images, audio } = assetState.manifest;
+  if (images) {
+    for (const [k, v] of Object.entries(images)) loadImageAsset(k, v);
+  }
+  if (audio) {
+    for (const [k, v] of Object.entries(audio)) loadAudioAsset(k, v);
+  }
+  assetState.ready = true;
+  let st = document.getElementById('assetStatusLabel');
+  if(st) st.textContent = 'Assets: live';
+}
+loadAssetManifest();
+
+
+function setErr(m=''){errorMsg.textContent=m}
+function driverName(){return(nameInput.value.trim()||'Rookie').slice(0,20)}
+
+if(isConfigured){
+  try{
+    app=initializeApp(firebaseConfig);auth=getAuth(app);db=getFirestore(app);
+    signInAnonymously(auth).catch(e=>setErr('Auth failed: '+e.message));
+    onAuthStateChanged(auth,u=>{if(!u)return;uid=u.uid;firebaseReady=true;authDot.classList.add('ok');authStatus.textContent='Signed in ('+uid.slice(0,6)+'…)';});
+  }catch(e){authStatus.textContent='Firebase config error';setErr(e.message)}
+}else{authStatus.textContent='Firebase placeholders detected — solo visuals work, multiplayer disabled.'}
+
+// ─── Timer helpers ───────────────────────────────────────────────────────────
+// clearCountdownTimer — clears only the countdown display interval (does NOT touch raceStartTimeout)
+function clearCountdownTimer(){if(countdownIntervalId){clearInterval(countdownIntervalId);countdownIntervalId=null}}
+// clearRaceTimers — clears both countdown display interval and race-start timeout
+function clearRaceTimers(){clearCountdownTimer();if(raceStartTimeout){clearTimeout(raceStartTimeout);raceStartTimeout=null}}
+function cleanupListeners(){
+  if(roomUnsub){roomUnsub();roomUnsub=null}
+  if(playersUnsub){playersUnsub();playersUnsub=null}
+  if(opponentStateUnsub){opponentStateUnsub();opponentStateUnsub=null}
+  clearRaceTimers()
+}
+
+// ─── Room helpers ─────────────────────────────────────────────────────────────
+function makeCode(){const a='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';return Array.from({length:6},()=>a[Math.floor(Math.random()*a.length)]).join('')}
+
+async function createRoom(){
+  try{setErr('');if(!firebaseReady||!uid)throw new Error('Wait for Firebase auth before creating a room.');
+  sfxClick();
+  for(let i=0;i<8;i++){const c=makeCode(),r=doc(db,'rooms',c);if((await getDoc(r)).exists())continue;
+    await setDoc(r,{roomCode:c,status:'lobby',player1Id:uid,player2Id:null,player1Ready:false,player2Ready:false,countdownStartMs:null,raceStartMs:null,winnerId:null,createdAt:serverTimestamp()});
+    await joinRoom(c);return}
+  throw new Error('Unable to allocate room code.')}catch(e){setErr('Create room failed: '+e.message)}
+}
+
+async function joinRoom(c){
+  try{setErr('');if(!firebaseReady||!uid)throw new Error('Firebase auth unavailable.');
+  c=(c||'').trim().toUpperCase();if(!c)throw new Error('Enter a room code.');
+  const roomRef=doc(db,'rooms',c),snap=await getDoc(roomRef);
+  if(!snap.exists())throw new Error('Room code not found.');
+  const room=snap.data();
+  if(room.status!=='lobby')throw new Error('Race already started.');
+  if(room.player1Id!==uid&&room.player2Id&&room.player2Id!==uid)throw new Error('Room is full.');
+  cleanupListeners();roomCode=c;roomCodeLabel.textContent=c;readyBtn.disabled=false;leaveBtn.disabled=false;localRaceStarted=false;gameover.style.display='none';
+  if(room.player1Id!==uid&&!room.player2Id){await updateDoc(roomRef,{player2Id:uid,player2Ready:false})}
+  await setDoc(doc(db,'rooms',c,'players',uid),{id:uid,name:driverName(),ready:false,finishedAtMs:null,finalScore:null,x:player.x,y:player.y,a:player.a,progress:player.progress,updatedAt:serverTimestamp()},{merge:true});
+  sfxClick();attachRoom(c)}catch(e){setErr('Join room failed: '+e.message)}
+}
+
+function attachRoom(c){
+  const roomRef=doc(db,'rooms',c);
+  roomUnsub=onSnapshot(roomRef,s=>{
+    roomData=s.exists()?s.data():null;updateLobbyState();
+    if(roomData?.status==='countdown')scheduleCountdown();
+    if(roomData?.status==='racing'){countdownText.textContent='';startLocalRaceOnce()}
+    if(roomData?.status==='finished')showResultFromRoom()
+  });
+  playersUnsub=onSnapshot(collection(db,'rooms',c,'players'),snap=>{
+    const list=snap.docs.map(d=>d.data());
+    me=list.find(p=>p.id===uid)||null;renderPlayers(list);
+    // Clear stale opponent subscription before replacing
+    if(opponentStateUnsub){opponentStateUnsub();opponentStateUnsub=null}
+    const opp=list.find(p=>p.id!==uid);
+    if(opp){opponentStateUnsub=onSnapshot(doc(db,'rooms',c,'players',opp.id),d=>{const o=d.data();if(!o)return;ghost.x=o.x??ghost.x;ghost.y=o.y??ghost.y;ghost.a=o.a??ghost.a;ghost.progress=o.progress??ghost.progress;ghost.visible=true})}
+    else ghost.visible=false;
+    const allReady=list.length>=2&&list.every(p=>p.ready);
+    lobbyMsg.textContent=list.length+' driver(s). '+(allReady?'All ready.':'Waiting for readiness.');
+    if(roomData?.player1Id===uid&&roomData?.status==='lobby'&&allReady)startMultiplayerRace()
+  })
+}
+
+function renderPlayers(list){
+  playersList.innerHTML='';
+  list.forEach(p=>{const li=document.createElement('li');li.innerHTML='<span>'+p.name+(p.id===uid?' (You)':'')+' </span><span class="'+(p.ready?'ready':'tiny')+'">'+(p.ready?'READY':'WAITING')+'</span>';playersList.appendChild(li)})
+}
+
+async function toggleReady(){
+  try{setErr('');if(!roomCode||!uid||!me)throw new Error('Join a room before readying.');
+  sfxReady();const next=!me.ready,patch={};
+  if(roomData?.player1Id===uid)patch.player1Ready=next;else if(roomData?.player2Id===uid)patch.player2Ready=next;
+  await updateDoc(doc(db,'rooms',roomCode),patch);
+  await updateDoc(doc(db,'rooms',roomCode,'players',uid),{ready:next,name:driverName(),updatedAt:serverTimestamp()})}catch(e){setErr('Ready update failed: '+e.message)}
+}
+
+async function startMultiplayerRace(){
+  try{if(!roomCode||!uid||roomData?.player1Id!==uid||roomData?.status!=='lobby')return;
+  const raceStartMs=Date.now()+3200;
+  await updateDoc(doc(db,'rooms',roomCode),{status:'countdown',countdownStartMs:Date.now(),raceStartMs});
+  raceStartTimeout=setTimeout(async()=>{try{await updateDoc(doc(db,'rooms',roomCode),{status:'racing'})}catch(e){setErr('Race start finalize failed: '+e.message)}},3300)
+  }catch(e){setErr('Start race failed: '+e.message)}
+}
+
+// syncCountdownUI — updates display only; does NOT call clearRaceTimers
+function syncCountdownUI(){
+  const left=Math.ceil(((roomData?.raceStartMs||Date.now())-Date.now())/1000);
+  if(left>0){countdownText.textContent=String(left);sfxCountdown()}
+  else{countdownText.textContent='GO!';sfxCountdownGo();clearCountdownTimer();startLocalRaceOnce()}
+}
+
+function scheduleCountdown(){clearCountdownTimer();syncCountdownUI();countdownIntervalId=setInterval(syncCountdownUI,1000)}
+
+function startLocalRaceOnce(){
+  if(localRaceStarted)return;localRaceStarted=true;
+  player.x=170;player.y=360;player.a=0;player.v=0;player.progress=0;player.finished=false;
+  boostCharge=1.0;boostLocked=false;gameover.style.display='none'
+}
+
+// publishRaceState — throttled, not every frame (caller enforces 180ms gate)
+async function publishRaceState(){
+  try{if(!roomCode||!uid||roomData?.status!=='racing')return;
+  await updateDoc(doc(db,'rooms',roomCode,'players',uid),{x:player.x,y:player.y,a:player.a,progress:player.progress,updatedAt:serverTimestamp()})}catch(e){setErr('Publish state failed: '+e.message)}
+}
+
+async function publishFinish(){
+  try{if(!roomCode||!uid||!roomData)return;
+  await updateDoc(doc(db,'rooms',roomCode,'players',uid),{finishedAtMs:Date.now(),finalScore:Math.round(player.progress*1000),progress:player.progress,updatedAt:serverTimestamp()});
+  const records=(await getDocs(collection(db,'rooms',roomCode,'players'))).docs.map(d=>d.data());
+  if(records.length>=2&&records.every(r=>r.finishedAtMs)){
+    const sorted=[...records].sort((a,b)=>a.finishedAtMs-b.finishedAtMs);
+    const winnerId=sorted[0].finishedAtMs===sorted[1].finishedAtMs?'tie':sorted[0].id;
+    await updateDoc(doc(db,'rooms',roomCode),{winnerId,status:'finished'})
+  }}catch(e){setErr('Publish finish failed: '+e.message)}
+}
+
+function showResultFromRoom(){
+  gameover.style.display='grid';
+  if(roomData?.winnerId==='tie'){resultTitle.textContent='Tie!';resultText.textContent='Both drivers finished at effectively the same time.';sfxFinish();return}
+  if(!roomData?.winnerId){resultTitle.textContent='Race Over';resultText.textContent='Waiting for both finishes…';return}
+  const won=roomData.winnerId===uid;
+  resultTitle.textContent=won?'Winner!':'Defeat';resultText.textContent=won?'You finished first.':'Opponent finished first.';
+  if(won)sfxWin();else sfxLose()
+}
+
+function updateLobbyState(){hudState.textContent='State: '+(roomData?.status||'Lobby')}
+
+async function leaveRoom(){
+  try{if(roomCode&&firebaseReady&&uid)await deleteDoc(doc(db,'rooms',roomCode,'players',uid)).catch(()=>{});
+  cleanupListeners();roomCode=null;roomData=null;me=null;
+  roomCodeLabel.textContent='—';readyBtn.disabled=true;leaveBtn.disabled=true;
+  playersList.innerHTML='';lobbyMsg.textContent='No room joined.';
+  ghost.visible=false;countdownText.textContent='';localRaceStarted=false;sfxClick()
+  }catch(e){setErr('Leave room failed: '+e.message)}
+}
+
+// ─── Web Audio ───────────────────────────────────────────────────────────────
+let audioCtx=null,soundEnabled=false;
+
+function initAudio(){
+  if(audioCtx)return;
+  try{audioCtx=new(window.AudioContext||window.webkitAudioContext)()}catch(e){console.warn('Web Audio unavailable:',e)}
+}
+
+function playTone(freq,dur,type='square',vol=0.22,delay=0){
+  if(!soundEnabled||!audioCtx)return;
+  try{const osc=audioCtx.createOscillator(),g=audioCtx.createGain();
+  osc.connect(g);g.connect(audioCtx.destination);
+  osc.type=type;osc.frequency.setValueAtTime(freq,audioCtx.currentTime+delay);
+  g.gain.setValueAtTime(vol,audioCtx.currentTime+delay);
+  g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+delay+dur);
+  osc.start(audioCtx.currentTime+delay);osc.stop(audioCtx.currentTime+delay+dur+0.01)}catch(e){}
+}
+
+function playNoise(dur,vol=0.18){
+  if(!soundEnabled||!audioCtx)return;
+  try{const n=Math.floor(audioCtx.sampleRate*dur),buf=audioCtx.createBuffer(1,n,audioCtx.sampleRate),d=buf.getChannelData(0);
+  for(let i=0;i<n;i++)d[i]=Math.random()*2-1;
+  const src=audioCtx.createBufferSource(),g=audioCtx.createGain();
+  src.buffer=buf;src.connect(g);g.connect(audioCtx.destination);
+  g.gain.setValueAtTime(vol,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+dur);
+  src.start();src.stop(audioCtx.currentTime+dur+0.01)}catch(e){}
+}
+
+function sfxClick(){playTone(800,0.05,'square',0.12)}
+function sfxReady(){playTone(440,0.07,'sine',0.2);playTone(660,0.1,'sine',0.2,0.08)}
+function sfxCountdown(){
+  if (assetState.audio['countdown'] && typeof soundEnabled !== 'undefined' && soundEnabled) {
+    try { assetState.audio['countdown'].currentTime=0; assetState.audio['countdown'].play().catch(()=>{}); } catch(e){}
+  } else {
+    playTone(330,0.1,'square',0.25)
+  }
+}
+function sfxCountdownGo(){
+  if (assetState.audio['start'] && typeof soundEnabled !== 'undefined' && soundEnabled) {
+    try { assetState.audio['start'].currentTime=0; assetState.audio['start'].play().catch(()=>{}); } catch(e){}
+  } else {
+    playTone(660,0.12,'sine',0.35);playTone(880,0.15,'sine',0.35,0.07)
+  }
+}
+function sfxBoost(){
+  if (assetState.audio['boost'] && typeof soundEnabled !== 'undefined' && soundEnabled) {
+    try { assetState.audio['boost'].currentTime=0; assetState.audio['boost'].play().catch(()=>{}); } catch(e){}
+  } else {
+    playTone(180,0.04,'sawtooth',0.15);playTone(380,0.09,'sawtooth',0.22,0.03);playTone(560,0.13,'sine',0.14,0.08)
+  }
+}
+function sfxDrift(){playNoise(0.09,0.14)}
+function sfxFinish(){
+  if (assetState.audio['finish'] && typeof soundEnabled !== 'undefined' && soundEnabled) {
+    try { assetState.audio['finish'].currentTime=0; assetState.audio['finish'].play().catch(()=>{}); } catch(e){}
+  } else {
+    [440,550,660,880].forEach((f,i)=>playTone(f,0.15,'sine',0.28,i*0.09))
+  }
+}
+function sfxWin(){[523,659,784,1047].forEach((f,i)=>playTone(f,0.2,'sine',0.33,i*0.1))}
+function sfxLose(){[330,277,220].forEach((f,i)=>playTone(f,0.22,'square',0.17,i*0.12))}
+
+el('soundBtn').onclick=()=>{
+  initAudio();soundEnabled=!soundEnabled;
+  el('soundBtn').textContent=soundEnabled?'🔊 Sound On':'🔇 Sound Off';
+  if(soundEnabled)sfxClick()
+};
+
+// ─── Gamepad ─────────────────────────────────────────────────────────────────
+const DEADZONE=0.15;
+window.addEventListener('gamepadconnected',e=>{
+  gamepadStatusEl.textContent='Gamepad: connected — '+(e.gamepad.id||'unknown').slice(0,30);
+  gamepadStatusEl.style.color='var(--ok)'
+});
+window.addEventListener('gamepaddisconnected',()=>{
+  gamepadStatusEl.textContent='Gamepad: disconnected';gamepadStatusEl.style.color=''
+});
+function getActiveGamepad(){
+  if(!navigator.getGamepads)return null;
+  const p=navigator.getGamepads();for(let i=0;i<p.length;i++)if(p[i]?.connected)return p[i];return null
+}
+
+// ─── Input ───────────────────────────────────────────────────────────────────
+const key={};
+addEventListener('keydown',e=>{
+  if(document.activeElement?.tagName==='INPUT')return;
+  if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(e.key.toLowerCase()))e.preventDefault();
+  key[e.key.toLowerCase()]=true
+});
+addEventListener('keyup',e=>{key[e.key.toLowerCase()]=false}); // always clear — prevents stuck keys
+
+// ─── Track / Player / Ghost ──────────────────────────────────────────────────
+const track={x:120,y:80,w:720,h:560};
+const player={x:170,y:360,a:0,v:0,progress:0,finished:false};
+const ghost={x:190,y:390,a:0,progress:0,visible:false};
+let lastPublish=0;
+
+// ─── Boost ───────────────────────────────────────────────────────────────────
+let boostCharge=1.0,boostActive=false,boostLocked=false,resetHeld=false;
+const BOOST_DRAIN=0.022,BOOST_REGEN=0.004,BOOST_THRESH=0.25,BOOST_MAXSPD=11.0;
+const boostParticles=[];
+function emitBoostParticle(x,y,angle){
+  const spread=(Math.random()-0.5)*0.9,spd=1.5+Math.random()*2.5;
+  boostParticles.push({x,y,vx:-Math.cos(angle+spread)*spd,vy:-Math.sin(angle+spread)*spd,life:1.0,decay:0.038+Math.random()*0.025,size:3+Math.random()*5,hue:Math.random()>0.4?'#36eaff':'#89f5ff'});
+  if(boostParticles.length>150)boostParticles.splice(0,15)
+}
+
+// ─── Drift / Skid ────────────────────────────────────────────────────────────
+let drifting=false,driftSfxTimer=0;
+const skidMarks=[];
+function emitSkid(x,y){
+  skidMarks.push({x,y,life:1.0,decay:0.011,r:4+Math.random()*4});
+  if(skidMarks.length>250)skidMarks.splice(0,25)
+}
+
+// ─── Game loop ───────────────────────────────────────────────────────────────
+function updateGame(){
+  const racing=roomData?.status==='racing'||!roomCode;
+
+  // Gamepad read
+  const pad=getActiveGamepad();
+  let gpSteer=0,gpAccel=false,gpBrake=false,gpBoost=false,gpDrift=false;
+  if(pad){
+    gpSteer=Math.abs(pad.axes[0]||0)>DEADZONE?(pad.axes[0]||0):0;
+    gpAccel=(pad.buttons[7]?.value>0.1)||!!(pad.buttons[0]?.pressed);
+    gpBrake=(pad.buttons[6]?.value>0.1)||!!(pad.buttons[1]?.pressed);
+    gpBoost=!!(pad.buttons[2]?.pressed)||!!(pad.buttons[3]?.pressed);
+    gpDrift=!!(pad.buttons[4]?.pressed)
+  }
+
+  if(racing){
+    const isAccel=key['arrowup']||key['w']||gpAccel;
+    const isBrake=key['arrowdown']||key['s']||gpBrake;
+    const isLeft=key['arrowleft']||key['a']||gpSteer<0;
+    const isRight=key['arrowright']||key['d']||gpSteer>0;
+    const isBoost=(key[' ']||gpBoost)&&!boostLocked&&boostCharge>0.01;
+    const isDrift=!!(key['shift']||gpDrift);
+
+    // R reset (edge-triggered to prevent continuous reset while held)
+    if(key['r']&&!resetHeld){player.x=170;player.y=360;player.a=0;player.v=0;resetHeld=true;sfxClick()}
+    else if(!key['r'])resetHeld=false;
+
+    // Boost
+    if(isBoost){
+      if(!boostActive){boostActive=true;sfxBoost()} // sound on transition only
+      boostCharge=Math.max(0,boostCharge-BOOST_DRAIN);
+      if(boostCharge<=0){boostLocked=true;boostActive=false}
+      const rx=player.x-Math.cos(player.a)*14,ry=player.y-Math.sin(player.a)*14;
+      emitBoostParticle(rx,ry,player.a);emitBoostParticle(rx,ry,player.a)
+    }else{
+      boostActive=false;
+      boostCharge=Math.min(1,boostCharge+BOOST_REGEN);
+      if(boostLocked&&boostCharge>=BOOST_THRESH)boostLocked=false
+    }
+
+    // Drift
+    drifting=isDrift&&Math.abs(player.v)>0.5;
+    if(drifting){
+      const rx=player.x-Math.cos(player.a)*12,ry=player.y-Math.sin(player.a)*12;
+      if(Math.random()>0.25)emitSkid(rx,ry);
+      if(--driftSfxTimer<=0){sfxDrift();driftSfxTimer=20}
+    }else driftSfxTimer=0;
+
+    // Velocity
+    const maxSpd=boostActive?BOOST_MAXSPD:7.2;
+    const friction=drifting?0.93:0.98;
+    if(isAccel)player.v+=0.18;
+    if(isBrake)player.v-=0.20;
+    player.v*=friction;
+    player.v=Math.max(-2.6,Math.min(maxSpd,player.v));
+
+    // Steering
+    const t=0.034*Math.sign(player.v||1);
+    const driftMult=drifting?1.75:1.0;
+    const steerAmt=Math.abs(gpSteer)>DEADZONE?Math.abs(gpSteer):1;
+    if(isLeft)player.a-=t*driftMult*steerAmt;
+    if(isRight)player.a+=t*driftMult*steerAmt;
+
+    // Move + bound
+    player.x+=Math.cos(player.a)*player.v;player.y+=Math.sin(player.a)*player.v;
+    player.x=Math.max(track.x-20,Math.min(track.x+track.w+20,player.x));
+    player.y=Math.max(track.y-20,Math.min(track.y+track.h+20,player.y));
+
+    // Progress
+    player.progress=Math.max(0,Math.min(1,((player.x-track.x)/track.w)*0.5+((player.y-track.y)/track.h)*0.5));
+
+    // Finish
+    if(roomCode&&roomData?.status==='racing'&&!player.finished&&player.progress>=0.995){
+      player.finished=true;sfxFinish();publishFinish()
+    }
+
+    // Publish throttle (180 ms gate — not every frame)
+    if(roomCode&&Date.now()-lastPublish>180){publishRaceState();lastPublish=Date.now()}
+
+    // Particle update
+    for(let i=boostParticles.length-1;i>=0;i--){const p=boostParticles[i];p.x+=p.vx;p.y+=p.vy;p.life-=p.decay;if(p.life<=0)boostParticles.splice(i,1)}
+    for(let i=skidMarks.length-1;i>=0;i--){skidMarks[i].life-=skidMarks[i].decay;if(skidMarks[i].life<=0)skidMarks.splice(i,1)}
+  }
+
+  // HUD
+  hudSpeed.textContent='Speed: '+Math.round(Math.abs(player.v)*26);
+  hudProgress.textContent='Progress: '+Math.round(player.progress*100)+'%';
+  const bPct=Math.round(boostCharge*100);
+  const bColor=boostLocked?'var(--bad)':boostCharge>0.5?'var(--cyan)':boostCharge>0.25?'var(--yellow)':'var(--bad)';
+  hudBoost.innerHTML='<span style="color:'+bColor+'">⚡ '+bPct+'%</span>'+(boostLocked?'<span style="color:var(--bad);font-size:.7rem"> RECHARGING</span>':'')
+}
+
+// ─── Render ──────────────────────────────────────────────────────────────────
+function drawTrack(){
+  if (assetState.images.trackBg) {
+    ctx.drawImage(assetState.images.trackBg, 0, 0, canvas.width, canvas.height);
+  } else {
+    ctx.fillStyle='#0e1322';ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.strokeStyle='#4a5b80';ctx.lineWidth=88;ctx.strokeRect(track.x,track.y,track.w,track.h);
+    ctx.strokeStyle='#1a243b';ctx.lineWidth=66;ctx.strokeRect(track.x,track.y,track.w,track.h);
+    ctx.setLineDash([24,20]);ctx.lineWidth=4;ctx.strokeStyle='#adb7cf';
+    ctx.strokeRect(track.x+35,track.y+35,track.w-70,track.h-70);ctx.setLineDash([]);
+  }
+  // Start line
+  if (assetState.images.banner) {
+    ctx.drawImage(assetState.images.banner, track.x+26, track.y+220, 18, 130);
+  } else {
+    ctx.fillStyle='white';ctx.fillRect(track.x+26,track.y+220,18,130);
+  }
+  // Finish indicator
+  if (assetState.images.banner) {
+    ctx.drawImage(assetState.images.banner, track.x+track.w-28, track.y+220, 10, 130);
+  } else {
+    ctx.fillStyle='#ffd16655';ctx.fillRect(track.x+track.w-28,track.y+220,10,130);
+  }
+}
+
+function drawSkids(){
+  for(const s of skidMarks){
+    ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+    ctx.fillStyle='rgba(200,200,220,'+((s.life*0.38).toFixed(3))+')';ctx.fill()
+  }
+}
+
+function drawBoostParticles(){
+  ctx.save();
+  for(const p of boostParticles){
+    ctx.globalAlpha=p.life*0.85;ctx.fillStyle=p.hue;
+    ctx.shadowBlur=10;ctx.shadowColor=p.hue;
+    const s=p.size*p.life;ctx.fillRect(p.x-s/2,p.y-s/2,s,s)
+  }
+  ctx.restore()
+}
+
+function drawBoostBar(){
+  const bW=180,bH=10,bX=canvas.width/2-90,bY=canvas.height-22;
+  const fill=boostCharge*bW;
+  const color=boostLocked?'#ff6b6b':boostCharge>0.5?'#36eaff':boostCharge>0.25?'#ffd166':'#ff6b6b';
+  ctx.fillStyle='#0b1120bb';ctx.fillRect(bX-2,bY-2,bW+4,bH+4);
+  ctx.fillStyle=color;
+  if(boostActive){ctx.shadowBlur=14;ctx.shadowColor=color}
+  ctx.fillRect(bX,bY,fill,bH);ctx.shadowBlur=0;
+  ctx.strokeStyle='#2a3f70';ctx.lineWidth=1;ctx.strokeRect(bX,bY,bW,bH);
+  ctx.fillStyle='#9cb1d8';ctx.font='10px Inter,system-ui,sans-serif';ctx.textAlign='right';ctx.fillText('BOOST',bX-6,bY+9);ctx.textAlign='left'
+}
+
+function drawCar(c,color,alpha=1,glow=false,isOpponent=false){
+  ctx.save();ctx.globalAlpha=alpha;ctx.translate(c.x,c.y);ctx.rotate(c.a);
+  if(glow){ctx.shadowBlur=20;ctx.shadowColor=color}
+  const img = isOpponent ? assetState.images.ghostCar : assetState.images.playerCar;
+  if (img) {
+    ctx.drawImage(img, -14, -8, 28, 16);
+  } else {
+    ctx.fillStyle=color;ctx.fillRect(-14,-8,28,16);
+    ctx.fillStyle='#0b0f17';ctx.fillRect(-7,-5,14,10);
+  }
+  ctx.restore()
+}
+
+function render(){
+  drawTrack();drawSkids();drawBoostParticles();
+  if(ghost.visible)drawCar(ghost,'#36eaff',0.45,false,true);
+  drawCar(player,'#ff3fb4',1,boostActive,false);
+  drawBoostBar()
+}
+
+(function loop(){updateGame();render();requestAnimationFrame(loop)})();
+
+// ─── Button handlers ─────────────────────────────────────────────────────────
+el('createBtn').onclick=createRoom;
+el('joinBtn').onclick=()=>joinRoom(joinCodeInput.value);
+readyBtn.onclick=toggleReady;
+leaveBtn.onclick=leaveRoom;
+el('closeResultBtn').onclick=()=>{gameover.style.display='none'};
+</script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "phase": "Phase 3 Asset Ingestion",
+  "images": {
+    "playerCar": "",
+    "opponentCar": "",
+    "road": "",
+    "startLine": "",
+    "finishLine": "",
+    "background": "",
+    "boostPad": "",
+    "barrier": ""
+  },
+  "audio": {
+    "countdown": "",
+    "start": "",
+    "finish": "",
+    "boost": "",
+    "musicLoop": ""
+  },
+  "notes": "Empty paths mean fallback canvas primitives remain active."
+}

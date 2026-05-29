@@ -1,0 +1,189 @@
+{
+  "version": "0.1.0",
+  "project": "Octane Street Racer",
+  "updatedAt": "2026-05-27",
+  "assetPolicy": {
+    "bulkIngestionAllowed": false,
+    "firstPackLimit": {
+      "carSprites": 3,
+      "trackBackgroundsOrTilesets": 1,
+      "startFinishBanners": 1,
+      "uiIcons": 3,
+      "soundEffects": 5
+    },
+    "licenseRequired": true,
+    "attributionRequired": true
+  },
+  "categories": {
+    "cars": [
+      {
+        "id": "car-neon-pink-v1",
+        "type": "car",
+        "path": "cars/car-neon-pink-v1.svg",
+        "description": "Player neon pink car",
+        "license": "project-owned/generated",
+        "source": "generated locally for Octane Racer",
+        "attribution": "None required",
+        "tags": ["car", "player", "pink", "svg"],
+        "status": "integrated"
+      },
+      {
+        "id": "car-cyan-ghost-v1",
+        "type": "car",
+        "path": "cars/car-cyan-ghost-v1.svg",
+        "description": "Opponent cyan ghost car",
+        "license": "project-owned/generated",
+        "source": "generated locally for Octane Racer",
+        "attribution": "None required",
+        "tags": ["car", "ghost", "cyan", "svg"],
+        "status": "integrated"
+      },
+      {
+        "id": "car-yellow-rival-v1",
+        "type": "car",
+        "path": "cars/car-yellow-rival-v1.svg",
+        "description": "Yellow rival car",
+        "license": "project-owned/generated",
+        "source": "generated locally for Octane Racer",
+        "attribution": "None required",
+        "tags": ["car", "rival", "yellow", "svg"],
+        "status": "integrated"
+      }
+    ],
+    "tracks": [
+      {
+        "id": "track-neon-loop-v1",
+        "type": "track",
+        "path": "tracks/track-neon-loop-v1.svg",
+        "description": "Neon loop track background",
+        "license": "project-owned/generated",
+        "source": "generated locally for Octane Racer",
+        "attribution": "None required",
+        "tags": ["track", "background", "loop", "svg"],
+        "status": "integrated"
+      }
+    ],
+    "ui": [
+      {
+        "id": "start-finish-banner-v1",
+        "type": "ui",
+        "path": "ui/start-finish-banner-v1.svg",
+        "description": "Checkered start/finish banner",
+        "license": "project-owned/generated",
+        "source": "generated locally for Octane Racer",
+        "attribution": "None required",
+        "tags": ["ui", "banner", "checkered", "svg"],
+        "status": "integrated"
+      },
+      {
+        "id": "icon-boost-v1",
+        "type": "ui",
+        "path": "ui/icon-boost-v1.svg",
+        "description": "Boost lightning icon",
+        "license": "project-owned/generated",
+        "source": "generated locally for Octane Racer",
+        "attribution": "None required",
+        "tags": ["ui", "icon", "boost", "svg"],
+        "status": "integrated"
+      },
+      {
+        "id": "icon-drift-v1",
+        "type": "ui",
+        "path": "ui/icon-drift-v1.svg",
+        "description": "Drift icon",
+        "license": "project-owned/generated",
+        "source": "generated locally for Octane Racer",
+        "attribution": "None required",
+        "tags": ["ui", "icon", "drift", "svg"],
+        "status": "integrated"
+      },
+      {
+        "id": "icon-gamepad-v1",
+        "type": "ui",
+        "path": "ui/icon-gamepad-v1.svg",
+        "description": "Gamepad icon",
+        "license": "project-owned/generated",
+        "source": "generated locally for Octane Racer",
+        "attribution": "None required",
+        "tags": ["ui", "icon", "gamepad", "svg"],
+        "status": "integrated"
+      }
+    ],
+    "fx": [],
+    "audio": [
+      {
+        "id": "sfx-boost-v1",
+        "type": "audio",
+        "path": "audio/sfx-boost-v1.wav",
+        "description": "Boost sound effect",
+        "license": "project-owned/generated",
+        "source": "generated locally for Octane Racer",
+        "attribution": "None required",
+        "tags": ["audio", "sfx", "boost"],
+        "status": "candidate"
+      },
+      {
+        "id": "sfx-drift-v1",
+        "type": "audio",
+        "path": "audio/sfx-drift-v1.wav",
+        "description": "Drift sound effect",
+        "license": "project-owned/generated",
+        "source": "generated locally for Octane Racer",
+        "attribution": "None required",
+        "tags": ["audio", "sfx", "drift"],
+        "status": "candidate"
+      },
+      {
+        "id": "sfx-countdown-v1",
+        "type": "audio",
+        "path": "audio/sfx-countdown-v1.wav",
+        "description": "Countdown beep",
+        "license": "project-owned/generated",
+        "source": "generated locally for Octane Racer",
+        "attribution": "None required",
+        "tags": ["audio", "sfx", "countdown"],
+        "status": "candidate"
+      },
+      {
+        "id": "sfx-finish-v1",
+        "type": "audio",
+        "path": "audio/sfx-finish-v1.wav",
+        "description": "Finish line sound",
+        "license": "project-owned/generated",
+        "source": "generated locally for Octane Racer",
+        "attribution": "None required",
+        "tags": ["audio", "sfx", "finish"],
+        "status": "candidate"
+      },
+      {
+        "id": "sfx-ui-click-v1",
+        "type": "audio",
+        "path": "audio/sfx-ui-click-v1.wav",
+        "description": "UI click sound",
+        "license": "project-owned/generated",
+        "source": "generated locally for Octane Racer",
+        "attribution": "None required",
+        "tags": ["audio", "sfx", "click"],
+        "status": "candidate"
+      }
+    ]
+  },
+  "images": {
+    "playerCar": "cars/car-neon-pink-v1.svg",
+    "ghostCar": "cars/car-cyan-ghost-v1.svg",
+    "rivalCar": "cars/car-yellow-rival-v1.svg",
+    "trackBg": "tracks/track-neon-loop-v1.svg",
+    "banner": "ui/start-finish-banner-v1.svg"
+  },
+  "entrySchema": {
+    "id": "stable-kebab-case-id",
+    "type": "car | track | ui | fx | audio",
+    "path": "relative/path/from/experiments/octane-street-racer",
+    "description": "short description",
+    "license": "license name or custom permission",
+    "source": "origin URL, local pack name, or generated",
+    "attribution": "required credit text",
+    "tags": ["array", "of", "tags"],
+    "status": "candidate | approved | integrated | rejected"
+  }
+}
