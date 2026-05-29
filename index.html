@@ -2,19 +2,50 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Octane Street Racer — Firebase Lobby Prototype</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>Octane Street Racer</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#070b14;--panel:#0d1730ee;--line:#2a3f70;--text:#e8f1ff;--muted:#9cb1d8;--cyan:#36eaff;--pink:#ff3fb4;--yellow:#ffd166;--ok:#65f59a;--bad:#ff6b6b}
-*{box-sizing:border-box}
-body{margin:0;color:var(--text);font-family:Inter,'Segoe UI',system-ui,sans-serif;background:radial-gradient(900px 460px at 85% 0,#36eaff22,transparent),radial-gradient(800px 500px at 0 100%,#ff3fb422,transparent),linear-gradient(#0d1730,#070b14);min-height:100vh}
-.app{max-width:1220px;margin:0 auto;padding:16px;display:grid;grid-template-columns:360px 1fr;gap:14px}
+/* ── Design tokens ─────────────────────────────────────────── */
+:root{
+  --bg:#070b14;--panel:#0d1730ee;--line:#2a3f70;
+  --text:#e8f1ff;--muted:#9cb1d8;
+  --cyan:#36eaff;--pink:#ff3fb4;--yellow:#ffd166;
+  --ok:#65f59a;--bad:#ff6b6b;
+}
+
+/* ── Reset ─────────────────────────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  color:var(--text);
+  font-family:Inter,'Segoe UI',system-ui,sans-serif;
+  background:radial-gradient(900px 460px at 85% 0,#36eaff22,transparent),
+             radial-gradient(800px 500px at 0 100%,#ff3fb422,transparent),
+             linear-gradient(#0d1730,#070b14);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+
+/* ── App layout ────────────────────────────────────────────── */
+.app{
+  max-width:1240px;margin:0 auto;padding:16px;
+  display:grid;grid-template-columns:360px 1fr;gap:14px;
+}
 @media(max-width:980px){.app{grid-template-columns:1fr}}
-.panel{background:linear-gradient(#111a30f5,var(--panel));border:1px solid var(--line);border-radius:16px;box-shadow:0 18px 40px #0008}
+
+/* ── Panels ────────────────────────────────────────────────── */
+.panel{
+  background:linear-gradient(#111a30f5,var(--panel));
+  border:1px solid var(--line);border-radius:16px;
+  box-shadow:0 18px 40px #0008;
+}
 .sidebar{padding:14px;display:flex;flex-direction:column;gap:10px}
 .section{border:1px solid #9cb1d844;border-radius:12px;padding:12px;background:#080d199e}
-h1{margin:0;font-size:1.25rem;letter-spacing:.08em;text-transform:uppercase;text-shadow:0 0 18px #36eaff77}
-h2{margin:0 0 8px;color:var(--cyan);font-size:.9rem;letter-spacing:.08em;text-transform:uppercase}
+
+h1{font-size:1.25rem;letter-spacing:.08em;text-transform:uppercase;text-shadow:0 0 18px #36eaff77}
+h2{margin-bottom:8px;color:var(--cyan);font-size:.9rem;letter-spacing:.08em;text-transform:uppercase}
+
+/* ── Lobby controls ─────────────────────────────────────────── */
 .row{display:flex;gap:8px;align-items:center}
 input,button{height:40px;border-radius:10px;font:inherit}
 input{width:100%;border:1px solid #365089;background:#0d1730;color:var(--text);padding:0 10px;text-transform:uppercase}
@@ -22,28 +53,123 @@ button{border:0;padding:0 14px;font-weight:800;cursor:pointer;background:linear-
 .alt{background:linear-gradient(120deg,#ff79cc,var(--pink));color:white}
 .ghost{background:#142340;color:var(--text);border:1px solid #49629b}
 button:disabled{filter:grayscale(.4) brightness(.7);cursor:not-allowed}
+
 .pill{display:inline-flex;gap:7px;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid #36eaff80;background:#36eaff1a;font-size:.82rem}
 .dot{width:8px;height:8px;border-radius:50%;background:#ffbf47;box-shadow:0 0 10px #ffbf47}
 .dot.ok{background:var(--ok);box-shadow:0 0 10px var(--ok)}
-.players{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+
+.players{list-style:none;display:grid;gap:7px}
 .players li{display:flex;justify-content:space-between;gap:8px;padding:9px;border-radius:9px;background:#14223eb8;border:1px solid #9cb1d83d}
 .tiny{font-size:.78rem;color:#b9c7e4;line-height:1.45}
 .ready{color:var(--ok);font-weight:800}
 .err{color:var(--bad)}
-.stage{position:relative;padding:10px;min-height:520px}
-canvas{width:100%;max-width:840px;aspect-ratio:4/3;display:block;margin:0 auto;border-radius:14px;border:1px solid #27406e;background:#111;box-shadow:0 0 30px #36eaff24}
-.hud{position:absolute;top:18px;left:20px;right:20px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-weight:800;text-shadow:0 2px 8px black;pointer-events:none}
-.countdown,.gameover{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
-.countdown strong{font-size:clamp(2.4rem,9vw,5rem);color:var(--yellow);text-shadow:0 0 24px #ffd166aa}
-.gameover{display:none}
-.gameover .card{pointer-events:auto;background:#080d19f0;padding:18px;border:1px solid #48639e;border-radius:14px;text-align:center;min-width:300px;box-shadow:0 16px 45px #0009}
-.kbd{color:var(--yellow)}
-#soundBtn{width:100%}
+
+/* ── Game stage ─────────────────────────────────────────────── */
+.stage{position:relative;padding:10px;min-height:520px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+
+/* ── Canvas ─────────────────────────────────────────────────── */
+#gameCanvas{
+  image-rendering:pixelated;
+  box-shadow:0 0 30px #36eaff24;
+  border:1px solid #27406e;
+  border-radius:8px;
+  background:#4CAF50;
+  display:block;
+}
+
+/* ── Countdown overlay ──────────────────────────────────────── */
+#countdownOverlay{
+  position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;z-index:5;
+}
+#countdownOverlay strong{
+  font-size:clamp(2.4rem,9vw,5rem);
+  color:var(--yellow);text-shadow:0 0 24px #ffd166aa;
+  font-family:'Press Start 2P',cursive;
+}
+
+/* ── Arcade overlays ────────────────────────────────────────── */
+.arcade-overlay{
+  position:absolute;top:10px;left:10px;right:10px;bottom:10px;
+  display:flex;flex-direction:column;justify-content:center;align-items:center;
+  background:rgba(0,0,0,0.88);z-index:10;border-radius:8px;
+  font-family:'Press Start 2P',cursive;color:white;
+}
+.arcade-overlay.hidden{display:none!important}
+
+/* Splash */
+#splash-screen{}
+.splash-title-1{font-size:3.5rem;color:#36eaff;text-shadow:6px 6px #3182ce;letter-spacing:-2px;margin-bottom:12px}
+.splash-title-2{font-size:2.5rem;color:#ffd166;text-shadow:6px 6px #e53e3e;letter-spacing:-2px;margin-bottom:60px}
+.splash-prompt{font-size:.65rem;color:#9ca3af;animation:blink 1.2s step-end infinite;text-transform:uppercase}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes bounceIn{0%{transform:scale(0.1);opacity:0}60%{transform:scale(1.2);opacity:1}100%{transform:scale(1)}}
+.bounce-in{animation:bounceIn 0.9s cubic-bezier(0.28,0.84,0.42,1) both}
+
+/* Menu */
+.menu-title-1{font-size:2.8rem;color:#36eaff;text-shadow:4px 4px #3182ce;margin-bottom:8px}
+.menu-title-2{font-size:1.8rem;color:#ffd166;text-shadow:4px 4px #e53e3e;margin-bottom:32px}
+.menu-instructions{font-size:.5rem;color:#9ca3af;text-align:center;line-height:2.2;text-transform:uppercase;margin-top:24px;max-width:320px}
+
+/* Gameover */
+.go-title{font-size:2.2rem;color:#ff6b6b;margin-bottom:16px}
+.go-score{font-size:1rem;margin-bottom:24px}
+.go-score span{color:#ffd166}
+.go-new-hs{display:none;flex-direction:column;align-items:center;gap:12px;margin-bottom:24px}
+.go-new-hs.visible{display:flex}
+.go-new-hs p{color:#65f59a;font-size:.65rem;animation:blink 1.2s step-end infinite}
+.go-new-hs input{
+  font-family:'Press Start 2P',cursive;
+  background:#222;border:4px solid #fff;
+  color:#fff;font-size:1.2rem;padding:8px;
+  width:100px;text-align:center;text-transform:uppercase;height:auto;border-radius:0;
+}
+
+/* High scores */
+.hs-title{font-size:1.8rem;color:#ffd166;margin-bottom:24px}
+.hs-table{width:100%;max-width:320px;border-collapse:collapse;font-size:.6rem}
+.hs-table th{padding:8px 4px;border-bottom:3px solid white;text-align:left}
+.hs-table td{padding:10px 4px}
+.hs-table .tr{text-align:right}
+
+/* Arcade buttons */
+.arc-btn{
+  background:#e53e3e;color:white;
+  padding:12px 18px;border:4px solid #fff;cursor:pointer;
+  text-transform:uppercase;font-size:.75rem;margin:6px;
+  font-family:'Press Start 2P',cursive;
+  transition:transform .1s,background .2s;border-radius:0;height:auto;
+}
+.arc-btn:hover{background:#fc8181;transform:scale(1.05)}
+.arc-btn:active{transform:scale(0.95)}
+.arc-btn.grey{background:#4a5568}
+.arc-btn.grey:hover{background:#718096}
+
+/* ── Mobile controls ─────────────────────────────────────────── */
+#mobile-controls{
+  position:absolute;bottom:24px;left:0;right:0;
+  display:flex;justify-content:space-between;padding:0 30px;
+  pointer-events:none;z-index:5;
+}
+.ctrl-grp{display:flex;gap:8px;align-items:center}
+.ctrl-btn{
+  width:54px;height:54px;
+  background:rgba(255,255,255,0.18);border:2px solid rgba(255,255,255,0.5);
+  border-radius:50%;pointer-events:auto;
+  display:flex;justify-content:center;align-items:center;
+  font-size:1rem;user-select:none;-webkit-user-select:none;
+  font-family:'Press Start 2P',cursive;font-size:.65rem;
+}
+@media(min-width:769px){#mobile-controls{display:none}}
+
+/* ── Misc ───────────────────────────────────────────────────── */
 #gamepadStatus{font-size:.75rem;color:var(--muted);padding:5px 10px;border-radius:8px;background:#080d199e;border:1px solid #9cb1d844}
+#soundBtn{width:100%}
 </style>
 </head>
 <body>
+
 <div class="app">
+  <!-- ── SIDEBAR ───────────────────────────────────────────── -->
   <aside class="panel sidebar">
     <h1>Octane Street Racer</h1>
     <div class="tiny">Arcade lobby + race-state sync prototype. Firebase is not authoritative netcode.</div>
@@ -58,20 +184,28 @@ canvas{width:100%;max-width:840px;aspect-ratio:4/3;display:block;margin:0 auto;b
       <div class="row" style="margin-bottom:8px"><input id="joinCodeInput" maxlength="6" placeholder="Room code"/><button id="joinBtn" class="alt">Join</button></div>
       <div class="row"><button id="readyBtn" class="ghost" disabled>Ready Up</button><button id="leaveBtn" class="ghost" disabled>Leave</button></div>
       <div class="tiny" style="margin-top:8px">Room: <b id="roomCodeLabel">—</b></div>
-      <div class="tiny" style="margin-top:6px">Prototype limitation: clients publish their own race state and finish data. Useful for demos, not cheat-proof competitive play.</div>
+      <div class="tiny" style="margin-top:6px">Prototype limitation: clients publish their own race state and finish data. Useful for demos, not cheat-proof competitive play. Firebase is not authoritative.</div>
     </section>
 
     <section class="section"><h2>Drivers</h2>
       <ul id="playersList" class="players"></ul>
-      <div id="lobbyMsg" class="tiny" style="margin-top:8px">No room joined.</div>
+      <div id="lobbyMsg" class="tiny" style="margin-top:8px">No room joined. Use Solo mode or Create/Join a room.</div>
+    </section>
+
+    <section class="section"><h2>Solo Mode</h2>
+      <div class="row"><button id="soloBtn">▶ Start Solo Race</button></div>
+      <div class="tiny" style="margin-top:8px">Play without Firebase. Full arcade loop.</div>
     </section>
 
     <section class="section"><h2>Controls</h2>
       <div class="tiny">
-        <span class="kbd">W / ↑</span> accelerate &nbsp; <span class="kbd">S / ↓</span> brake<br/>
-        <span class="kbd">A / D / ← →</span> steer<br/>
-        <span class="kbd">Space</span> boost &nbsp; <span class="kbd">Shift</span> drift &nbsp; <span class="kbd">R</span> reset<br/>
-        Gamepad optional — LStick steer · RT/A accel · LT/B brake · X/□ boost · LB drift
+        <span style="color:var(--yellow)">↑ / W</span> accelerate &nbsp;
+        <span style="color:var(--yellow)">↓ / S</span> brake<br/>
+        <span style="color:var(--yellow)">← / →</span> steer<br/>
+        <span style="color:var(--yellow)">A</span> shift up &nbsp;
+        <span style="color:var(--yellow)">Z</span> shift down<br/>
+        <span style="color:var(--yellow)">Space</span> boost (when meter full)<br/>
+        Avoid traffic. Near misses fill boost. 3 lives.
       </div>
     </section>
 
@@ -83,117 +217,144 @@ canvas{width:100%;max-width:840px;aspect-ratio:4/3;display:block;margin:0 auto;b
     <div id="errorMsg" class="tiny err"></div>
   </aside>
 
+  <!-- ── GAME STAGE ─────────────────────────────────────────── -->
   <main class="panel stage">
-    <div class="hud">
-      <div id="hudSpeed">Speed: 0</div>
-      <div id="hudBoost" style="color:var(--cyan)">⚡ 100%</div>
-      <div id="hudProgress">Progress: 0%</div>
-      <div id="hudState">State: Lobby</div>
-    </div>
-    <canvas id="gameCanvas" width="960" height="720"></canvas>
-    <div id="countdown" class="countdown"><strong></strong></div>
-    <div id="gameover" class="gameover">
-      <div class="card">
-        <h3 id="resultTitle" style="margin:0 0 6px">Race Over</h3>
-        <div id="resultText" class="tiny">Waiting…</div>
-        <button id="closeResultBtn" class="ghost" style="margin-top:12px">Close</button>
+
+    <!-- Countdown overlay (multiplayer) -->
+    <div id="countdownOverlay"><strong id="countdownText"></strong></div>
+
+    <!-- Canvas -->
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <!-- Arcade overlays (rendered over canvas) -->
+
+    <!-- Splash -->
+    <div id="splash-screen" class="arcade-overlay">
+      <div class="bounce-in" style="text-align:center">
+        <div class="splash-title-1">OCTANE</div>
+        <div class="splash-title-2">STREET RACER</div>
+        <div class="splash-prompt">Click or press any key</div>
       </div>
     </div>
+
+    <!-- Main Menu -->
+    <div id="menu-screen" class="arcade-overlay hidden">
+      <div style="text-align:center">
+        <div class="menu-title-1">OCTANE</div>
+        <div class="menu-title-2">STREET RACER</div>
+        <button class="arc-btn" id="menuStartBtn">Start Engine</button>
+        <button class="arc-btn" id="menuHSBtn">High Scores</button>
+        <div class="menu-instructions">
+          USE ARROW KEYS TO DRIVE<br>
+          A AND Z TO SHIFT GEARS<br>
+          SPACEBAR TO BOOST<br>
+          NEAR MISSES FILL BOOST<br>
+          AVOID TRAFFIC &mdash; THEY SWITCH LANES<br>
+          3 FUEL CANS. GO AS FAR AS YOU CAN
+        </div>
+      </div>
+    </div>
+
+    <!-- Game Over -->
+    <div id="gameover-screen" class="arcade-overlay hidden">
+      <div class="go-title">CRASHED OUT</div>
+      <div class="go-score">Score: <span id="final-score">0</span></div>
+      <div id="new-highscore-box" class="go-new-hs">
+        <p>NEW HIGH SCORE!</p>
+        <input type="text" id="initials-input" maxlength="3" placeholder="AAA"/>
+        <button class="arc-btn" id="saveHSBtn">Save</button>
+      </div>
+      <div id="gameover-buttons">
+        <button class="arc-btn" id="goRetryBtn">Try Again</button>
+        <button class="arc-btn grey" id="goMenuBtn">Menu</button>
+      </div>
+      <!-- Multiplayer result area (hidden in solo) -->
+      <div id="mpResultArea" class="hidden" style="margin-top:16px">
+        <div id="mpResultTitle" style="font-size:.8rem;color:var(--yellow);margin-bottom:8px"></div>
+        <div id="mpResultText" class="tiny"></div>
+      </div>
+    </div>
+
+    <!-- High Scores -->
+    <div id="highscores-screen" class="arcade-overlay hidden">
+      <div class="hs-title">Top Racers</div>
+      <table class="hs-table">
+        <thead><tr><th>Rank</th><th>Name</th><th class="tr">Score</th></tr></thead>
+        <tbody id="highscore-list"></tbody>
+      </table>
+      <button class="arc-btn" id="hsBackBtn" style="margin-top:24px">Back</button>
+    </div>
+
+    <!-- Mobile controls -->
+    <div id="mobile-controls">
+      <div class="ctrl-grp">
+        <div class="ctrl-btn" id="btn-left">←</div>
+        <div class="ctrl-btn" id="btn-right">→</div>
+      </div>
+      <div class="ctrl-grp">
+        <div class="ctrl-btn" id="btn-boost" style="border-color:#36eaff;color:#36eaff">B</div>
+      </div>
+      <div class="ctrl-grp" style="flex-direction:column">
+        <div class="ctrl-btn" id="btn-up">↑</div>
+        <div class="ctrl-btn" id="btn-down">↓</div>
+      </div>
+    </div>
+
   </main>
 </div>
 
 <script type="module">
-// TODO(modules): split Firebase room service, lobby UI, renderer, input, and game loop
-// into separate files after the prototype stabilizes.
+// ============================================================
+// Octane Street Racer — Restored Arcade Loop + Firebase Shell
+// ============================================================
+// TODO(modules): split Firebase room service, lobby UI, renderer,
+// input, and game loop into separate files after prototype stabilizes.
+
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js';
-import { getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, onSnapshot, collection, getDocs, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+import { getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, onSnapshot, collection, getDocs, serverTimestamp }
+  from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
 
 // Firebase setup: create a Firebase project, add a Web App, paste config below,
-// enable Anonymous Auth, and enable Firestore. Rules here are prototype-only.
-const firebaseConfig={apiKey:'YOUR_API_KEY',authDomain:'YOUR_PROJECT.firebaseapp.com',projectId:'YOUR_PROJECT_ID',storageBucket:'YOUR_PROJECT.appspot.com',messagingSenderId:'YOUR_SENDER_ID',appId:'YOUR_APP_ID'};
+// enable Anonymous Auth and Firestore. Rules here are prototype-only.
+const firebaseConfig={
+  apiKey:'YOUR_API_KEY',
+  authDomain:'YOUR_PROJECT.firebaseapp.com',
+  projectId:'YOUR_PROJECT_ID',
+  storageBucket:'YOUR_PROJECT.appspot.com',
+  messagingSenderId:'YOUR_SENDER_ID',
+  appId:'YOUR_APP_ID'
+};
 const isConfigured=firebaseConfig.apiKey&&firebaseConfig.apiKey!=='YOUR_API_KEY';
 
-// ─── Element refs ────────────────────────────────────────────────────────────
+// ─── Element refs ─────────────────────────────────────────────────────────────
 const el=id=>document.getElementById(id);
 const authDot=el('authDot'),authStatus=el('authStatus'),errorMsg=el('errorMsg');
 const nameInput=el('nameInput'),joinCodeInput=el('joinCodeInput');
 const roomCodeLabel=el('roomCodeLabel'),playersList=el('playersList'),lobbyMsg=el('lobbyMsg');
 const readyBtn=el('readyBtn'),leaveBtn=el('leaveBtn');
-const countdownText=el('countdown').querySelector('strong');
-const gameover=el('gameover'),resultTitle=el('resultTitle'),resultText=el('resultText');
-const hudSpeed=el('hudSpeed'),hudBoost=el('hudBoost'),hudProgress=el('hudProgress'),hudState=el('hudState');
+const countdownText=el('countdownText');
 const canvas=el('gameCanvas'),ctx=canvas.getContext('2d');
-const gamepadStatusEl=el('gamepadStatus');
+ctx.imageSmoothingEnabled=false;
 
-// ─── Firebase state ──────────────────────────────────────────────────────────
+// ─── Canvas resize ─────────────────────────────────────────────────────────────
+function resizeCanvas(){
+  const aspect=800/600;
+  let w=canvas.parentElement.clientWidth-20;
+  let h=w/aspect;
+  const maxH=window.innerHeight-80;
+  if(h>maxH){h=maxH;w=h*aspect;}
+  canvas.style.width=`${w}px`;
+  canvas.style.height=`${h}px`;
+}
+window.addEventListener('resize',resizeCanvas);
+resizeCanvas();
+
+// ─── Firebase state ────────────────────────────────────────────────────────────
 let app=null,auth=null,db=null,uid=null;
 let roomCode=null,roomData=null,me=null;
 let roomUnsub=null,playersUnsub=null,opponentStateUnsub=null;
 let firebaseReady=false,raceStartTimeout=null,countdownIntervalId=null,localRaceStarted=false;
-
-// Asset Ingestion
-const assetState = {
-  manifest: null,
-  images: {},
-  audio: {},
-  ready: false,
-  errors: []
-};
-
-function getAssetBase() {
-  return location.pathname.includes('/experiments/octane-street-racer/')
-    ? './assets/'
-    : './experiments/octane-street-racer/assets/';
-}
-
-function loadAssetManifest() {
-  fetch(getAssetBase() + 'asset-manifest.json')
-    .then(r => r.json())
-    .then(data => {
-      assetState.manifest = data;
-      console.log('Asset manifest loaded');
-      preloadAssets();
-    })
-    .catch(e => {
-      console.warn('Asset manifest missing or invalid, using canvas fallback primitives.', e);
-      let st = document.getElementById('assetStatusLabel');
-      if(st) st.textContent = 'Assets: placeholders';
-    });
-}
-
-function loadImageAsset(key, path) {
-  if (!path) return;
-  const img = new Image();
-  img.onload = () => { assetState.images[key] = img; };
-  img.onerror = () => { console.warn('Missing image asset:', path); };
-  img.src = getAssetBase() + path;
-}
-
-function loadAudioAsset(key, path) {
-  if (!path) return;
-  const audio = new Audio();
-  audio.src = getAssetBase() + path;
-  audio.preload = 'auto';
-  audio.onerror = () => { console.warn('Missing audio asset:', path); };
-  assetState.audio[key] = audio;
-}
-
-function preloadAssets() {
-  if (!assetState.manifest) return;
-  const { images, audio } = assetState.manifest;
-  if (images) {
-    for (const [k, v] of Object.entries(images)) loadImageAsset(k, v);
-  }
-  if (audio) {
-    for (const [k, v] of Object.entries(audio)) loadAudioAsset(k, v);
-  }
-  assetState.ready = true;
-  let st = document.getElementById('assetStatusLabel');
-  if(st) st.textContent = 'Assets: live';
-}
-loadAssetManifest();
-
 
 function setErr(m=''){errorMsg.textContent=m}
 function driverName(){return(nameInput.value.trim()||'Rookie').slice(0,20)}
@@ -204,12 +365,10 @@ if(isConfigured){
     signInAnonymously(auth).catch(e=>setErr('Auth failed: '+e.message));
     onAuthStateChanged(auth,u=>{if(!u)return;uid=u.uid;firebaseReady=true;authDot.classList.add('ok');authStatus.textContent='Signed in ('+uid.slice(0,6)+'…)';});
   }catch(e){authStatus.textContent='Firebase config error';setErr(e.message)}
-}else{authStatus.textContent='Firebase placeholders detected — solo visuals work, multiplayer disabled.'}
+}else{authStatus.textContent='Firebase placeholders — solo mode fully works, multiplayer disabled.'}
 
-// ─── Timer helpers ───────────────────────────────────────────────────────────
-// clearCountdownTimer — clears only the countdown display interval (does NOT touch raceStartTimeout)
+// ─── Timer helpers ─────────────────────────────────────────────────────────────
 function clearCountdownTimer(){if(countdownIntervalId){clearInterval(countdownIntervalId);countdownIntervalId=null}}
-// clearRaceTimers — clears both countdown display interval and race-start timeout
 function clearRaceTimers(){clearCountdownTimer();if(raceStartTimeout){clearTimeout(raceStartTimeout);raceStartTimeout=null}}
 function cleanupListeners(){
   if(roomUnsub){roomUnsub();roomUnsub=null}
@@ -218,11 +377,11 @@ function cleanupListeners(){
   clearRaceTimers()
 }
 
-// ─── Room helpers ─────────────────────────────────────────────────────────────
+// ─── Room helpers ──────────────────────────────────────────────────────────────
 function makeCode(){const a='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';return Array.from({length:6},()=>a[Math.floor(Math.random()*a.length)]).join('')}
 
 async function createRoom(){
-  try{setErr('');if(!firebaseReady||!uid)throw new Error('Wait for Firebase auth before creating a room.');
+  try{setErr('');if(!firebaseReady||!uid)throw new Error('Wait for Firebase auth.');
   sfxClick();
   for(let i=0;i<8;i++){const c=makeCode(),r=doc(db,'rooms',c);if((await getDoc(r)).exists())continue;
     await setDoc(r,{roomCode:c,status:'lobby',player1Id:uid,player2Id:null,player1Ready:false,player2Ready:false,countdownStartMs:null,raceStartMs:null,winnerId:null,createdAt:serverTimestamp()});
@@ -238,28 +397,38 @@ async function joinRoom(c){
   const room=snap.data();
   if(room.status!=='lobby')throw new Error('Race already started.');
   if(room.player1Id!==uid&&room.player2Id&&room.player2Id!==uid)throw new Error('Room is full.');
-  cleanupListeners();roomCode=c;roomCodeLabel.textContent=c;readyBtn.disabled=false;leaveBtn.disabled=false;localRaceStarted=false;gameover.style.display='none';
+  cleanupListeners();roomCode=c;roomCodeLabel.textContent=c;readyBtn.disabled=false;leaveBtn.disabled=false;localRaceStarted=false;
+  hideArcadeOverlays();
   if(room.player1Id!==uid&&!room.player2Id){await updateDoc(roomRef,{player2Id:uid,player2Ready:false})}
-  await setDoc(doc(db,'rooms',c,'players',uid),{id:uid,name:driverName(),ready:false,finishedAtMs:null,finalScore:null,x:player.x,y:player.y,a:player.a,progress:player.progress,updatedAt:serverTimestamp()},{merge:true});
+  await setDoc(doc(db,'rooms',c,'players',uid),{
+    id:uid,name:driverName(),ready:false,finishedAtMs:null,finalScore:null,
+    x:400,y:500,speed:0,distance:0,score:0,lives:3,gear:1,boostMeter:0,isBoosting:false,finished:false,
+    updatedAt:serverTimestamp()
+  },{merge:true});
   sfxClick();attachRoom(c)}catch(e){setErr('Join room failed: '+e.message)}
 }
 
 function attachRoom(c){
   const roomRef=doc(db,'rooms',c);
   roomUnsub=onSnapshot(roomRef,s=>{
-    roomData=s.exists()?s.data():null;updateLobbyState();
+    roomData=s.exists()?s.data():null;
     if(roomData?.status==='countdown')scheduleCountdown();
     if(roomData?.status==='racing'){countdownText.textContent='';startLocalRaceOnce()}
-    if(roomData?.status==='finished')showResultFromRoom()
+    if(roomData?.status==='finished')showMpResult()
   });
   playersUnsub=onSnapshot(collection(db,'rooms',c,'players'),snap=>{
     const list=snap.docs.map(d=>d.data());
     me=list.find(p=>p.id===uid)||null;renderPlayers(list);
-    // Clear stale opponent subscription before replacing
     if(opponentStateUnsub){opponentStateUnsub();opponentStateUnsub=null}
     const opp=list.find(p=>p.id!==uid);
-    if(opp){opponentStateUnsub=onSnapshot(doc(db,'rooms',c,'players',opp.id),d=>{const o=d.data();if(!o)return;ghost.x=o.x??ghost.x;ghost.y=o.y??ghost.y;ghost.a=o.a??ghost.a;ghost.progress=o.progress??ghost.progress;ghost.visible=true})}
-    else ghost.visible=false;
+    if(opp){
+      opponentStateUnsub=onSnapshot(doc(db,'rooms',c,'players',opp.id),d=>{
+        const o=d.data();if(!o)return;
+        ghost.x=o.x??ghost.x;ghost.y=o.y??ghost.y;
+        ghost.speed=o.speed??0;ghost.gear=o.gear??1;
+        ghost.visible=true;
+      })
+    }else ghost.visible=false;
     const allReady=list.length>=2&&list.every(p=>p.ready);
     lobbyMsg.textContent=list.length+' driver(s). '+(allReady?'All ready.':'Waiting for readiness.');
     if(roomData?.player1Id===uid&&roomData?.status==='lobby'&&allReady)startMultiplayerRace()
@@ -287,48 +456,60 @@ async function startMultiplayerRace(){
   }catch(e){setErr('Start race failed: '+e.message)}
 }
 
-// syncCountdownUI — updates display only; does NOT call clearRaceTimers
 function syncCountdownUI(){
   const left=Math.ceil(((roomData?.raceStartMs||Date.now())-Date.now())/1000);
   if(left>0){countdownText.textContent=String(left);sfxCountdown()}
   else{countdownText.textContent='GO!';sfxCountdownGo();clearCountdownTimer();startLocalRaceOnce()}
 }
-
 function scheduleCountdown(){clearCountdownTimer();syncCountdownUI();countdownIntervalId=setInterval(syncCountdownUI,1000)}
 
+// startLocalRaceOnce — called from multiplayer countdown path
 function startLocalRaceOnce(){
   if(localRaceStarted)return;localRaceStarted=true;
-  player.x=170;player.y=360;player.a=0;player.v=0;player.progress=0;player.finished=false;
-  boostCharge=1.0;boostLocked=false;gameover.style.display='none'
+  hideArcadeOverlays();
+  startArcadeGame();
 }
 
-// publishRaceState — throttled, not every frame (caller enforces 180ms gate)
+// publishRaceState — throttled (caller enforces 180ms gate)
+// Phase 4: publish arcade fields (x, y, speed, distance, score, lives, gear, boostMeter, isBoosting, finished)
 async function publishRaceState(){
   try{if(!roomCode||!uid||roomData?.status!=='racing')return;
-  await updateDoc(doc(db,'rooms',roomCode,'players',uid),{x:player.x,y:player.y,a:player.a,progress:player.progress,updatedAt:serverTimestamp()})}catch(e){setErr('Publish state failed: '+e.message)}
+  await updateDoc(doc(db,'rooms',roomCode,'players',uid),{
+    x:player.x,y:player.y,
+    speed:player.speed,distance:player.distance,score:player.score,
+    lives:player.lives,gear:player.gear,
+    boostMeter:player.boostMeter,isBoosting:player.isBoosting,
+    finished:player.finished||false,
+    updatedAt:serverTimestamp()
+  })}catch(e){setErr('Publish state failed: '+e.message)}
 }
 
 async function publishFinish(){
   try{if(!roomCode||!uid||!roomData)return;
-  await updateDoc(doc(db,'rooms',roomCode,'players',uid),{finishedAtMs:Date.now(),finalScore:Math.round(player.progress*1000),progress:player.progress,updatedAt:serverTimestamp()});
+  await updateDoc(doc(db,'rooms',roomCode,'players',uid),{
+    finishedAtMs:Date.now(),finalScore:Math.round(player.score),
+    distance:player.distance,finished:true,updatedAt:serverTimestamp()
+  });
   const records=(await getDocs(collection(db,'rooms',roomCode,'players'))).docs.map(d=>d.data());
-  if(records.length>=2&&records.every(r=>r.finishedAtMs)){
-    const sorted=[...records].sort((a,b)=>a.finishedAtMs-b.finishedAtMs);
-    const winnerId=sorted[0].finishedAtMs===sorted[1].finishedAtMs?'tie':sorted[0].id;
+  if(records.length>=2&&records.every(r=>r.finished||r.lives<=0)){
+    // Score-based winner: higher final score wins; tie if equal
+    const sorted=[...records].sort((a,b)=>(b.finalScore||0)-(a.finalScore||0));
+    const winnerId=sorted[0].finalScore===sorted[1].finalScore?'tie':sorted[0].id;
     await updateDoc(doc(db,'rooms',roomCode),{winnerId,status:'finished'})
   }}catch(e){setErr('Publish finish failed: '+e.message)}
 }
 
-function showResultFromRoom(){
-  gameover.style.display='grid';
-  if(roomData?.winnerId==='tie'){resultTitle.textContent='Tie!';resultText.textContent='Both drivers finished at effectively the same time.';sfxFinish();return}
-  if(!roomData?.winnerId){resultTitle.textContent='Race Over';resultText.textContent='Waiting for both finishes…';return}
+function showMpResult(){
+  const mpArea=el('mpResultArea'),mpTitle=el('mpResultTitle'),mpText=el('mpResultText');
+  if(!mpArea)return;
+  mpArea.classList.remove('hidden');
+  if(roomData?.winnerId==='tie'){mpTitle.textContent='Tie!';mpText.textContent='Both drivers finished with equal scores.';sfxFinish();return}
+  if(!roomData?.winnerId){mpTitle.textContent='Race Over';mpText.textContent='Waiting for both finishes…';return}
   const won=roomData.winnerId===uid;
-  resultTitle.textContent=won?'Winner!':'Defeat';resultText.textContent=won?'You finished first.':'Opponent finished first.';
+  mpTitle.textContent=won?'Winner!':'Defeat';
+  mpText.textContent=won?'You scored higher!':'Opponent scored higher.';
   if(won)sfxWin();else sfxLose()
 }
-
-function updateLobbyState(){hudState.textContent='State: '+(roomData?.status||'Lobby')}
 
 async function leaveRoom(){
   try{if(roomCode&&firebaseReady&&uid)await deleteDoc(doc(db,'rooms',roomCode,'players',uid)).catch(()=>{});
@@ -339,14 +520,9 @@ async function leaveRoom(){
   }catch(e){setErr('Leave room failed: '+e.message)}
 }
 
-// ─── Web Audio ───────────────────────────────────────────────────────────────
+// ─── Web Audio ─────────────────────────────────────────────────────────────────
 let audioCtx=null,soundEnabled=false;
-
-function initAudio(){
-  if(audioCtx)return;
-  try{audioCtx=new(window.AudioContext||window.webkitAudioContext)()}catch(e){console.warn('Web Audio unavailable:',e)}
-}
-
+function initAudio(){if(audioCtx)return;try{audioCtx=new(window.AudioContext||window.webkitAudioContext)()}catch(e){console.warn('Web Audio unavailable:',e)}}
 function playTone(freq,dur,type='square',vol=0.22,delay=0){
   if(!soundEnabled||!audioCtx)return;
   try{const osc=audioCtx.createOscillator(),g=audioCtx.createGain();
@@ -356,7 +532,6 @@ function playTone(freq,dur,type='square',vol=0.22,delay=0){
   g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+delay+dur);
   osc.start(audioCtx.currentTime+delay);osc.stop(audioCtx.currentTime+delay+dur+0.01)}catch(e){}
 }
-
 function playNoise(dur,vol=0.18){
   if(!soundEnabled||!audioCtx)return;
   try{const n=Math.floor(audioCtx.sampleRate*dur),buf=audioCtx.createBuffer(1,n,audioCtx.sampleRate),d=buf.getChannelData(0);
@@ -366,268 +541,739 @@ function playNoise(dur,vol=0.18){
   g.gain.setValueAtTime(vol,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+dur);
   src.start();src.stop(audioCtx.currentTime+dur+0.01)}catch(e){}
 }
-
 function sfxClick(){playTone(800,0.05,'square',0.12)}
 function sfxReady(){playTone(440,0.07,'sine',0.2);playTone(660,0.1,'sine',0.2,0.08)}
-function sfxCountdown(){
-  if (assetState.audio['countdown'] && typeof soundEnabled !== 'undefined' && soundEnabled) {
-    try { assetState.audio['countdown'].currentTime=0; assetState.audio['countdown'].play().catch(()=>{}); } catch(e){}
-  } else {
-    playTone(330,0.1,'square',0.25)
-  }
-}
-function sfxCountdownGo(){
-  if (assetState.audio['start'] && typeof soundEnabled !== 'undefined' && soundEnabled) {
-    try { assetState.audio['start'].currentTime=0; assetState.audio['start'].play().catch(()=>{}); } catch(e){}
-  } else {
-    playTone(660,0.12,'sine',0.35);playTone(880,0.15,'sine',0.35,0.07)
-  }
-}
-function sfxBoost(){
-  if (assetState.audio['boost'] && typeof soundEnabled !== 'undefined' && soundEnabled) {
-    try { assetState.audio['boost'].currentTime=0; assetState.audio['boost'].play().catch(()=>{}); } catch(e){}
-  } else {
-    playTone(180,0.04,'sawtooth',0.15);playTone(380,0.09,'sawtooth',0.22,0.03);playTone(560,0.13,'sine',0.14,0.08)
-  }
-}
-function sfxDrift(){playNoise(0.09,0.14)}
-function sfxFinish(){
-  if (assetState.audio['finish'] && typeof soundEnabled !== 'undefined' && soundEnabled) {
-    try { assetState.audio['finish'].currentTime=0; assetState.audio['finish'].play().catch(()=>{}); } catch(e){}
-  } else {
-    [440,550,660,880].forEach((f,i)=>playTone(f,0.15,'sine',0.28,i*0.09))
-  }
-}
+function sfxCountdown(){playTone(330,0.1,'square',0.25)}
+function sfxCountdownGo(){playTone(660,0.12,'sine',0.35);playTone(880,0.15,'sine',0.35,0.07)}
+function sfxBoost(){playTone(180,0.04,'sawtooth',0.15);playTone(380,0.09,'sawtooth',0.22,0.03);playTone(560,0.13,'sine',0.14,0.08)}
+function sfxCrash(){playNoise(0.25,0.35);playTone(120,0.3,'sawtooth',0.2,0.05)}
+function sfxPerfectShift(){playTone(660,0.08,'sine',0.28);playTone(880,0.1,'sine',0.28,0.06)}
+function sfxNearMiss(){playTone(440,0.06,'square',0.18);playTone(550,0.08,'square',0.18,0.04)}
+function sfxPickup(){[523,659,784].forEach((f,i)=>playTone(f,0.1,'sine',0.22,i*0.06))}
+function sfxFinish(){[440,550,660,880].forEach((f,i)=>playTone(f,0.15,'sine',0.28,i*0.09))}
 function sfxWin(){[523,659,784,1047].forEach((f,i)=>playTone(f,0.2,'sine',0.33,i*0.1))}
 function sfxLose(){[330,277,220].forEach((f,i)=>playTone(f,0.22,'square',0.17,i*0.12))}
-
 el('soundBtn').onclick=()=>{
   initAudio();soundEnabled=!soundEnabled;
   el('soundBtn').textContent=soundEnabled?'🔊 Sound On':'🔇 Sound Off';
   if(soundEnabled)sfxClick()
 };
 
-// ─── Gamepad ─────────────────────────────────────────────────────────────────
-const DEADZONE=0.15;
-window.addEventListener('gamepadconnected',e=>{
-  gamepadStatusEl.textContent='Gamepad: connected — '+(e.gamepad.id||'unknown').slice(0,30);
-  gamepadStatusEl.style.color='var(--ok)'
-});
-window.addEventListener('gamepaddisconnected',()=>{
-  gamepadStatusEl.textContent='Gamepad: disconnected';gamepadStatusEl.style.color=''
-});
-function getActiveGamepad(){
-  if(!navigator.getGamepads)return null;
-  const p=navigator.getGamepads();for(let i=0;i<p.length;i++)if(p[i]?.connected)return p[i];return null
-}
+// ─── Input ────────────────────────────────────────────────────────────────────
+// Arcade keys: Arrow keys drive, A/Z shift gears, Space = boost
+const keys={ArrowUp:false,ArrowDown:false,ArrowLeft:false,ArrowRight:false,Space:false};
 
-// ─── Input ───────────────────────────────────────────────────────────────────
-const key={};
-addEventListener('keydown',e=>{
+window.addEventListener('keydown',e=>{
   if(document.activeElement?.tagName==='INPUT')return;
-  if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(e.key.toLowerCase()))e.preventDefault();
-  key[e.key.toLowerCase()]=true
-});
-addEventListener('keyup',e=>{key[e.key.toLowerCase()]=false}); // always clear — prevents stuck keys
+  // Prevent page scroll on arrow/space
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();
 
-// ─── Track / Player / Ghost ──────────────────────────────────────────────────
-const track={x:120,y:80,w:720,h:560};
-const player={x:170,y:360,a:0,v:0,progress:0,finished:false};
-const ghost={x:190,y:390,a:0,progress:0,visible:false};
+  // Splash advance
+  if(gameState==='splash'){startFromSplash();return}
+
+  // Keys object
+  if(e.code in keys)keys[e.code]=true;
+  if(e.key===' ')keys.Space=true;
+
+  // Gear shifting (not on repeat)
+  if(gameState==='playing'&&!e.repeat){
+    if((e.code==='KeyA')&&player.gear<3){
+      const threshold=gearStats[player.gear].max;
+      if(Math.abs(player.speed-threshold)<=50){
+        player.score+=500;
+        floatingTexts.push({text:'PERFECT SHIFT! +500',x:player.x+16,y:player.y+85,timer:1.5,color:'#00ffff'});
+        sfxPerfectShift();
+      }
+      player.gear++;sfxClick();
+    }
+    if((e.code==='KeyZ')&&player.gear>1){
+      const threshold=gearStats[player.gear-1].max;
+      if(Math.abs(player.speed-threshold)<=50){
+        player.score+=500;
+        floatingTexts.push({text:'PERFECT SHIFT! +500',x:player.x+16,y:player.y+85,timer:1.5,color:'#00ffff'});
+        sfxPerfectShift();
+      }
+      player.gear--;sfxClick();
+    }
+  }
+});
+window.addEventListener('keyup',e=>{
+  if(e.code in keys)keys[e.code]=false;
+  if(e.key===' ')keys.Space=false;
+});
+
+// Touch controls
+function bindTouch(id,key){
+  const el2=el(id);if(!el2)return;
+  el2.addEventListener('touchstart',e=>{e.preventDefault();keys[key]=true},{passive:false});
+  el2.addEventListener('touchend',e=>{e.preventDefault();keys[key]=false},{passive:false});
+}
+bindTouch('btn-up','ArrowUp');bindTouch('btn-down','ArrowDown');
+bindTouch('btn-left','ArrowLeft');bindTouch('btn-right','ArrowRight');
+bindTouch('btn-boost','Space');
+el('splash-screen').addEventListener('click',startFromSplash);
+
+// ─── Game constants ────────────────────────────────────────────────────────────
+const ROAD_X=200;
+const ROAD_W=400;
+
+const gearStats=[
+  {max:0,accel:0},        // index 0 (unused)
+  {max:250,accel:450},    // Gear 1
+  {max:450,accel:300},    // Gear 2
+  {max:700,accel:200}     // Gear 3
+];
+
+let highScores=[
+  {name:'RYU',score:15000},
+  {name:'AMI',score:10000},
+  {name:'GRX',score:7500},
+  {name:'CPU',score:5000},
+  {name:'NOB',score:2000}
+];
+
+const basePlayerConfig={name:'Racer',color:'#e53e3e'};
+
+// ─── Game state ────────────────────────────────────────────────────────────────
+let gameState='splash'; // splash | menu | playing | gameover
+let lastTime=0;
 let lastPublish=0;
 
-// ─── Boost ───────────────────────────────────────────────────────────────────
-let boostCharge=1.0,boostActive=false,boostLocked=false,resetHeld=false;
-const BOOST_DRAIN=0.022,BOOST_REGEN=0.004,BOOST_THRESH=0.25,BOOST_MAXSPD=11.0;
-const boostParticles=[];
-function emitBoostParticle(x,y,angle){
-  const spread=(Math.random()-0.5)*0.9,spd=1.5+Math.random()*2.5;
-  boostParticles.push({x,y,vx:-Math.cos(angle+spread)*spd,vy:-Math.sin(angle+spread)*spd,life:1.0,decay:0.038+Math.random()*0.025,size:3+Math.random()*5,hue:Math.random()>0.4?'#36eaff':'#89f5ff'});
-  if(boostParticles.length>150)boostParticles.splice(0,15)
-}
+// Entities / world arrays
+let entities=[];
+let pickups=[];
+let particles=[];
+let floatingTexts=[];
+let scenery=[];
+// Weather stub (deferred full implementation to Phase 2)
+let weather={type:'clear',intensity:0,timer:15,drops:[]};
 
-// ─── Drift / Skid ────────────────────────────────────────────────────────────
-let drifting=false,driftSfxTimer=0;
-const skidMarks=[];
-function emitSkid(x,y){
-  skidMarks.push({x,y,life:1.0,decay:0.011,r:4+Math.random()*4});
-  if(skidMarks.length>250)skidMarks.splice(0,25)
-}
+let bgOffsetY=0;
+let cameraSpeed=0;
+let timeSinceLastSpawn=0;
 
-// ─── Game loop ───────────────────────────────────────────────────────────────
-function updateGame(){
-  const racing=roomData?.status==='racing'||!roomCode;
+// Ghost for multiplayer opponent
+const ghost={x:400,y:500,speed:0,gear:1,visible:false};
 
-  // Gamepad read
-  const pad=getActiveGamepad();
-  let gpSteer=0,gpAccel=false,gpBrake=false,gpBoost=false,gpDrift=false;
-  if(pad){
-    gpSteer=Math.abs(pad.axes[0]||0)>DEADZONE?(pad.axes[0]||0):0;
-    gpAccel=(pad.buttons[7]?.value>0.1)||!!(pad.buttons[0]?.pressed);
-    gpBrake=(pad.buttons[6]?.value>0.1)||!!(pad.buttons[1]?.pressed);
-    gpBoost=!!(pad.buttons[2]?.pressed)||!!(pad.buttons[3]?.pressed);
-    gpDrift=!!(pad.buttons[4]?.pressed)
-  }
+// ─── Player ────────────────────────────────────────────────────────────────────
+let player={
+  x:400,y:500,w:32,h:64,
+  speed:0,maxSpeed:0,accel:0,
+  gear:1,color:'#e53e3e',
+  lives:3,score:0,distance:0,
+  invulnerable:0,spinAngle:0,
+  wrongGearTimer:0,
+  boostMeter:0,isBoosting:false,boostTimer:0,
+  playTime:0,nextGasDrain:30,nextGasSpawn:60,
+  emergencyGasTimer:0,
+  finished:false
+};
 
-  if(racing){
-    const isAccel=key['arrowup']||key['w']||gpAccel;
-    const isBrake=key['arrowdown']||key['s']||gpBrake;
-    const isLeft=key['arrowleft']||key['a']||gpSteer<0;
-    const isRight=key['arrowright']||key['d']||gpSteer>0;
-    const isBoost=(key[' ']||gpBoost)&&!boostLocked&&boostCharge>0.01;
-    const isDrift=!!(key['shift']||gpDrift);
+// ─── Drawing helpers ────────────────────────────────────────────────────────────
 
-    // R reset (edge-triggered to prevent continuous reset while held)
-    if(key['r']&&!resetHeld){player.x=170;player.y=360;player.a=0;player.v=0;resetHeld=true;sfxClick()}
-    else if(!key['r'])resetHeld=false;
-
-    // Boost
-    if(isBoost){
-      if(!boostActive){boostActive=true;sfxBoost()} // sound on transition only
-      boostCharge=Math.max(0,boostCharge-BOOST_DRAIN);
-      if(boostCharge<=0){boostLocked=true;boostActive=false}
-      const rx=player.x-Math.cos(player.a)*14,ry=player.y-Math.sin(player.a)*14;
-      emitBoostParticle(rx,ry,player.a);emitBoostParticle(rx,ry,player.a)
-    }else{
-      boostActive=false;
-      boostCharge=Math.min(1,boostCharge+BOOST_REGEN);
-      if(boostLocked&&boostCharge>=BOOST_THRESH)boostLocked=false
-    }
-
-    // Drift
-    drifting=isDrift&&Math.abs(player.v)>0.5;
-    if(drifting){
-      const rx=player.x-Math.cos(player.a)*12,ry=player.y-Math.sin(player.a)*12;
-      if(Math.random()>0.25)emitSkid(rx,ry);
-      if(--driftSfxTimer<=0){sfxDrift();driftSfxTimer=20}
-    }else driftSfxTimer=0;
-
-    // Velocity
-    const maxSpd=boostActive?BOOST_MAXSPD:7.2;
-    const friction=drifting?0.93:0.98;
-    if(isAccel)player.v+=0.18;
-    if(isBrake)player.v-=0.20;
-    player.v*=friction;
-    player.v=Math.max(-2.6,Math.min(maxSpd,player.v));
-
-    // Steering
-    const t=0.034*Math.sign(player.v||1);
-    const driftMult=drifting?1.75:1.0;
-    const steerAmt=Math.abs(gpSteer)>DEADZONE?Math.abs(gpSteer):1;
-    if(isLeft)player.a-=t*driftMult*steerAmt;
-    if(isRight)player.a+=t*driftMult*steerAmt;
-
-    // Move + bound
-    player.x+=Math.cos(player.a)*player.v;player.y+=Math.sin(player.a)*player.v;
-    player.x=Math.max(track.x-20,Math.min(track.x+track.w+20,player.x));
-    player.y=Math.max(track.y-20,Math.min(track.y+track.h+20,player.y));
-
-    // Progress
-    player.progress=Math.max(0,Math.min(1,((player.x-track.x)/track.w)*0.5+((player.y-track.y)/track.h)*0.5));
-
-    // Finish
-    if(roomCode&&roomData?.status==='racing'&&!player.finished&&player.progress>=0.995){
-      player.finished=true;sfxFinish();publishFinish()
-    }
-
-    // Publish throttle (180 ms gate — not every frame)
-    if(roomCode&&Date.now()-lastPublish>180){publishRaceState();lastPublish=Date.now()}
-
-    // Particle update
-    for(let i=boostParticles.length-1;i>=0;i--){const p=boostParticles[i];p.x+=p.vx;p.y+=p.vy;p.life-=p.decay;if(p.life<=0)boostParticles.splice(i,1)}
-    for(let i=skidMarks.length-1;i>=0;i--){skidMarks[i].life-=skidMarks[i].decay;if(skidMarks[i].life<=0)skidMarks.splice(i,1)}
-  }
-
-  // HUD
-  hudSpeed.textContent='Speed: '+Math.round(Math.abs(player.v)*26);
-  hudProgress.textContent='Progress: '+Math.round(player.progress*100)+'%';
-  const bPct=Math.round(boostCharge*100);
-  const bColor=boostLocked?'var(--bad)':boostCharge>0.5?'var(--cyan)':boostCharge>0.25?'var(--yellow)':'var(--bad)';
-  hudBoost.innerHTML='<span style="color:'+bColor+'">⚡ '+bPct+'%</span>'+(boostLocked?'<span style="color:var(--bad);font-size:.7rem"> RECHARGING</span>':'')
-}
-
-// ─── Render ──────────────────────────────────────────────────────────────────
-function drawTrack(){
-  if (assetState.images.trackBg) {
-    ctx.drawImage(assetState.images.trackBg, 0, 0, canvas.width, canvas.height);
-  } else {
-    ctx.fillStyle='#0e1322';ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.strokeStyle='#4a5b80';ctx.lineWidth=88;ctx.strokeRect(track.x,track.y,track.w,track.h);
-    ctx.strokeStyle='#1a243b';ctx.lineWidth=66;ctx.strokeRect(track.x,track.y,track.w,track.h);
-    ctx.setLineDash([24,20]);ctx.lineWidth=4;ctx.strokeStyle='#adb7cf';
-    ctx.strokeRect(track.x+35,track.y+35,track.w-70,track.h-70);ctx.setLineDash([]);
-  }
-  // Start line
-  if (assetState.images.banner) {
-    ctx.drawImage(assetState.images.banner, track.x+26, track.y+220, 18, 130);
-  } else {
-    ctx.fillStyle='white';ctx.fillRect(track.x+26,track.y+220,18,130);
-  }
-  // Finish indicator
-  if (assetState.images.banner) {
-    ctx.drawImage(assetState.images.banner, track.x+track.w-28, track.y+220, 10, 130);
-  } else {
-    ctx.fillStyle='#ffd16655';ctx.fillRect(track.x+track.w-28,track.y+220,10,130);
-  }
-}
-
-function drawSkids(){
-  for(const s of skidMarks){
-    ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
-    ctx.fillStyle='rgba(200,200,220,'+((s.life*0.38).toFixed(3))+')';ctx.fill()
-  }
-}
-
-function drawBoostParticles(){
+function drawCar(x,y,width,height,color,isPlayer=false,spinAngle=0){
   ctx.save();
-  for(const p of boostParticles){
-    ctx.globalAlpha=p.life*0.85;ctx.fillStyle=p.hue;
-    ctx.shadowBlur=10;ctx.shadowColor=p.hue;
-    const s=p.size*p.life;ctx.fillRect(p.x-s/2,p.y-s/2,s,s)
-  }
-  ctx.restore()
-}
+  ctx.translate(x+width/2,y+height/2);
+  if(isPlayer&&spinAngle>0)ctx.rotate(spinAngle);
+  ctx.translate(-width/2,-height/2);
 
-function drawBoostBar(){
-  const bW=180,bH=10,bX=canvas.width/2-90,bY=canvas.height-22;
-  const fill=boostCharge*bW;
-  const color=boostLocked?'#ff6b6b':boostCharge>0.5?'#36eaff':boostCharge>0.25?'#ffd166':'#ff6b6b';
-  ctx.fillStyle='#0b1120bb';ctx.fillRect(bX-2,bY-2,bW+4,bH+4);
+  // Underglow
+  ctx.shadowColor=color;
+  ctx.shadowBlur=isPlayer&&player.isBoosting?20:8;
   ctx.fillStyle=color;
-  if(boostActive){ctx.shadowBlur=14;ctx.shadowColor=color}
-  ctx.fillRect(bX,bY,fill,bH);ctx.shadowBlur=0;
-  ctx.strokeStyle='#2a3f70';ctx.lineWidth=1;ctx.strokeRect(bX,bY,bW,bH);
-  ctx.fillStyle='#9cb1d8';ctx.font='10px Inter,system-ui,sans-serif';ctx.textAlign='right';ctx.fillText('BOOST',bX-6,bY+9);ctx.textAlign='left'
-}
+  ctx.fillRect(4,4,width-8,height-8);
+  ctx.shadowBlur=0;
 
-function drawCar(c,color,alpha=1,glow=false,isOpponent=false){
-  ctx.save();ctx.globalAlpha=alpha;ctx.translate(c.x,c.y);ctx.rotate(c.a);
-  if(glow){ctx.shadowBlur=20;ctx.shadowColor=color}
-  const img = isOpponent ? assetState.images.ghostCar : assetState.images.playerCar;
-  if (img) {
-    ctx.drawImage(img, -14, -8, 28, 16);
-  } else {
-    ctx.fillStyle=color;ctx.fillRect(-14,-8,28,16);
-    ctx.fillStyle='#0b0f17';ctx.fillRect(-7,-5,14,10);
+  // Shadow
+  ctx.fillStyle='rgba(0,0,0,0.5)';
+  ctx.fillRect(4,4,width,height);
+
+  // Body
+  ctx.fillStyle=color;
+  ctx.fillRect(0,8,width,height-16);
+  ctx.fillRect(4,0,width-8,height);
+
+  // Roof
+  ctx.fillStyle='#111';
+  ctx.fillRect(4,16,width-8,height-32);
+
+  // Windows
+  ctx.fillStyle='#87cefa';
+  ctx.fillRect(6,18,width-12,10);
+  ctx.fillRect(6,height-28,width-12,10);
+
+  // Lights
+  if(isPlayer){
+    ctx.fillStyle='yellow';
+    ctx.fillRect(4,2,6,4);
+    ctx.fillRect(width-10,2,6,4);
+  }else{
+    ctx.fillStyle='red';
+    ctx.fillRect(4,height-6,6,4);
+    ctx.fillRect(width-10,height-6,6,4);
   }
-  ctx.restore()
+  ctx.restore();
 }
 
-function render(){
-  drawTrack();drawSkids();drawBoostParticles();
-  if(ghost.visible)drawCar(ghost,'#36eaff',0.45,false,true);
-  drawCar(player,'#ff3fb4',1,boostActive,false);
-  drawBoostBar()
+function drawGasCan(x,y){
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.translate(0,Math.sin(Date.now()/150)*5);
+  ctx.shadowColor='yellow';ctx.shadowBlur=10;
+  ctx.fillStyle='#e53e3e';ctx.fillRect(-8,-9,16,18);
+  ctx.fillStyle='#ccc';ctx.fillRect(-4,-13,8,4);
+  ctx.fillStyle='#8b0000';ctx.fillRect(-8,-5,16,3);
+  ctx.fillStyle='white';ctx.font='8px "Press Start 2P"';ctx.textAlign='center';
+  ctx.fillText('F',0,6);
+  ctx.restore();
 }
 
-(function loop(){updateGame();render();requestAnimationFrame(loop)})();
+function createParticles(x,y,color,count){
+  for(let i=0;i<count;i++){
+    particles.push({x,y,vx:(Math.random()-0.5)*200,vy:(Math.random()-0.5)*200,life:0.5+Math.random()*0.5,color});
+  }
+}
 
-// ─── Button handlers ─────────────────────────────────────────────────────────
+// ─── Init / Reset ─────────────────────────────────────────────────────────────
+function initGame(){
+  player={
+    x:400-16,y:480,w:32,h:64,
+    speed:0,maxSpeed:600,accel:520,
+    color:'#e53e3e',
+    lives:3,score:0,distance:0,
+    invulnerable:0,spinAngle:0,
+    gear:1,wrongGearTimer:0,
+    boostMeter:0,isBoosting:false,boostTimer:0,
+    playTime:0,nextGasDrain:30,nextGasSpawn:60,
+    emergencyGasTimer:0,
+    finished:false
+  };
+  entities=[];pickups=[];particles=[];floatingTexts=[];scenery=[];
+  weather={type:'clear',intensity:0,timer:15,drops:[]};
+  bgOffsetY=0;cameraSpeed=0;timeSinceLastSpawn=0;
+}
+
+// ─── Entity spawning ──────────────────────────────────────────────────────────
+function spawnEntity(){
+  if(entities.length>12)return;
+  const laneW=ROAD_W/4;
+  const lane=Math.floor(Math.random()*4);
+  const x=ROAD_X+(lane*laneW)+(laneW/2)-16;
+  const y=-100;
+  for(let e of entities){
+    if(Math.abs(e.y-y)<150&&Math.abs(e.x-x)<40)return;
+  }
+  entities.push({
+    type:'traffic',lane,
+    x,y,w:32,h:64,
+    speed:80+Math.random()*220,
+    color:`hsl(${Math.random()*360},70%,50%)`,
+    switchTimer:1+Math.random()*3,
+    passed:false
+  });
+}
+
+// ─── Crash handler ────────────────────────────────────────────────────────────
+function handleCrash(isSpinout=false){
+  player.lives--;
+  player.speed=0;cameraSpeed=0;
+  player.invulnerable=2.0;
+  sfxCrash();
+  if(isSpinout){
+    player.spinAngle=Math.PI*4;
+    createParticles(player.x+16,player.y+16,'#fff',20);
+    floatingTexts.push({text:'SPINOUT!',x:player.x+16,y:player.y-20,timer:1.5,color:'#ff6b6b'});
+  }else{
+    createParticles(player.x+16,player.y+16,'#ff4500',30);
+    floatingTexts.push({text:'CRASH! -1 LIFE',x:player.x+16,y:player.y-20,timer:1.5,color:'#ff6b6b'});
+  }
+  // Screen shake
+  canvas.style.transform='translate(5px,5px)';
+  setTimeout(()=>canvas.style.transform='translate(-5px,-5px)',50);
+  setTimeout(()=>canvas.style.transform='translate(5px,-5px)',100);
+  setTimeout(()=>canvas.style.transform='translate(0,0)',150);
+
+  if(player.lives<=0){
+    player.finished=true;
+    // Publish finish to multiplayer if in a race
+    if(roomCode&&roomData?.status==='racing')publishFinish();
+    setTimeout(triggerGameOver,500);
+  }
+}
+
+// ─── Update ───────────────────────────────────────────────────────────────────
+function update(dt){
+  if(gameState!=='playing')return;
+
+  // Gear / speed
+  const currentGear=gearStats[player.gear];
+  player.maxSpeed=currentGear.max;
+  player.accel=currentGear.accel;
+  let wrongGear=false;
+
+  if(player.invulnerable<=0){
+    if(player.isBoosting){
+      player.boostTimer-=dt;
+      player.speed=900;
+      if(Math.random()<0.3)createParticles(player.x+16,player.y+64,'#00ffff',2);
+      if(player.boostTimer<=0)player.isBoosting=false;
+    }else{
+      if(keys.Space&&player.boostMeter>=100){
+        player.isBoosting=true;player.boostTimer=3.0;player.boostMeter=0;
+        createParticles(player.x+16,player.y+64,'#00ffff',20);
+        sfxBoost();
+      }
+      if(keys.ArrowUp)player.speed+=player.accel*dt;
+      else if(keys.ArrowDown)player.speed-=1200*dt;
+      else player.speed-=100*dt;
+
+      if(player.speed>player.maxSpeed)player.speed-=500*dt;
+
+      // Engine stress
+      if(player.speed>5){
+        if(player.gear===1&&player.speed>=420)wrongGear=true;
+        else if(player.gear===2&&player.speed<=400){wrongGear=true;player.accel=50;}
+      }else if(player.speed<=5&&player.gear>1&&keys.ArrowUp){wrongGear=true;player.accel=50;}
+    }
+  }
+
+  // Apply stress
+  if(wrongGear&&player.invulnerable<=0&&!player.isBoosting){
+    player.wrongGearTimer+=dt;
+    if(player.wrongGearTimer>=2.0){handleCrash(true);player.wrongGearTimer=0;}
+  }else{player.wrongGearTimer=Math.max(0,player.wrongGearTimer-dt*2);}
+
+  // Spinout animation
+  if(player.spinAngle>0){player.spinAngle-=dt*10;if(player.spinAngle<0)player.spinAngle=0;}
+
+  player.speed=Math.max(0,player.speed);
+  cameraSpeed=player.speed;
+
+  // Steering
+  if(player.speed>0&&player.invulnerable<=0){
+    const speedFactor=Math.max(0.5,1.3-(player.speed/1000));
+    const turnSpeed=440*dt*speedFactor;
+    if(keys.ArrowLeft)player.x-=turnSpeed;
+    if(keys.ArrowRight)player.x+=turnSpeed;
+  }
+  player.x=Math.max(ROAD_X,Math.min(player.x,ROAD_X+ROAD_W-player.w));
+
+  // Distance & score
+  const multiplier=player.isBoosting?2:1;
+  player.distance+=player.speed*dt;
+  player.score+=((player.speed*player.speed*dt)/1500)*multiplier;
+
+  // Timers
+  if(player.invulnerable>0)player.invulnerable-=dt;
+  player.playTime+=dt;
+
+  // Fuel drain (lives as fuel)
+  if(player.playTime>=player.nextGasDrain){
+    player.nextGasDrain+=30;
+    player.lives--;
+    floatingTexts.push({text:'-1 FUEL CAN!',x:player.x+16,y:player.y-20,timer:2.0,color:'#e53e3e'});
+    if(player.lives<=0)handleCrash(true);
+  }
+
+  // Gas pickup spawn
+  if(player.playTime>=player.nextGasSpawn){
+    player.nextGasSpawn+=60;
+    const laneW=ROAD_W/4;
+    const lane=Math.floor(Math.random()*4);
+    pickups.push({x:ROAD_X+(lane*laneW)+(laneW/2),y:-100,radius:12});
+    floatingTexts.push({text:'FUEL AIRDROP!',x:400,y:150,timer:3.0,color:'#00ffff'});
+  }
+
+  // Emergency gas (lives===1)
+  if(player.lives===1){
+    player.emergencyGasTimer-=dt;
+    if(player.emergencyGasTimer<=0){
+      const laneW=ROAD_W/4;
+      const playerLane=Math.floor(Math.max(0,Math.min(3,(player.x+player.w/2-ROAD_X)/laneW)));
+      let spawnLane;
+      do{spawnLane=Math.floor(Math.random()*4)}while(spawnLane===playerLane);
+      pickups.push({x:ROAD_X+(spawnLane*laneW)+(laneW/2),y:-100,radius:12});
+      floatingTexts.push({text:'CRITICAL FUEL AHEAD!',x:400,y:150,timer:3.0,color:'#ff6b6b'});
+      player.emergencyGasTimer=15.0;
+    }
+  }else{player.emergencyGasTimer=0;}
+
+  // Floating texts
+  for(let i=floatingTexts.length-1;i>=0;i--){
+    floatingTexts[i].timer-=dt;
+    floatingTexts[i].y-=20*dt;
+    if(floatingTexts[i].timer<=0)floatingTexts.splice(i,1);
+  }
+
+  // Camera
+  bgOffsetY+=cameraSpeed*dt;
+  if(bgOffsetY>100)bgOffsetY-=100;
+
+  // Spawn traffic
+  const baseSpawnRate=0.03+(player.distance/250000);
+  if(Math.random()<Math.min(0.12,baseSpawnRate))spawnEntity();
+
+  // Update entities
+  const difficulty=Math.min(1.0,player.distance/20000);
+  const laneW=ROAD_W/4;
+  for(let i=entities.length-1;i>=0;i--){
+    const e=entities[i];
+    const relSpeed=e.speed-cameraSpeed;
+    e.y-=relSpeed*dt;
+
+    if(e.type==='traffic'){
+      // Lane-switching AI
+      if(e.switchTimer>0){e.switchTimer-=dt;}
+      else if(e.y<250&&Math.random()<difficulty*0.05){
+        const dir=Math.random()>0.5?1:-1;
+        if(e.lane+dir>=0&&e.lane+dir<=3){
+          e.lane+=dir;e.switchTimer=2+Math.random()*4;
+          createParticles(e.x+16,e.y+e.h,'#ccc',10);
+        }
+      }
+      // Smooth to target lane
+      const targetX=ROAD_X+(e.lane*laneW)+(laneW/2)-16;
+      e.x+=(targetX-e.x)*4*dt;
+    }
+
+    // Collision
+    if(player.invulnerable<=0&&!player.isBoosting){
+      if(player.x<e.x+e.w&&player.x+player.w>e.x&&player.y<e.y+e.h&&player.y+player.h>e.y){
+        handleCrash(false);
+      }
+      // Near miss
+      if(e.type==='traffic'&&!e.passed){
+        if(e.y>player.y+player.h){
+          e.passed=true;
+          if(Math.abs(e.x-player.x)<50){
+            player.score+=500;
+            player.boostMeter=Math.min(100,player.boostMeter+25);
+            createParticles(player.x+16,player.y,'cyan',5);
+            floatingTexts.push({text:'NEAR MISS!!! +500',x:player.x+16,y:player.y+85,timer:1.0,color:'yellow'});
+            sfxNearMiss();
+          }
+        }
+      }
+    }else if(player.isBoosting){
+      if(player.x<e.x+e.w&&player.x+player.w>e.x&&player.y<e.y+e.h&&player.y+player.h>e.y){
+        e.x+=(e.x>player.x?1:-1)*200;e.y-=100;
+        createParticles(e.x+16,e.y+32,'white',10);
+        if(e.type==='traffic')player.score+=1000;
+      }
+    }
+
+    if(e.y>700||e.y<-500||e.x<-100||e.x>900)entities.splice(i,1);
+  }
+
+  // Pickups
+  for(let i=pickups.length-1;i>=0;i--){
+    const p=pickups[i];
+    p.y+=cameraSpeed*dt;
+    if(player.invulnerable<=0){
+      if(Math.abs((player.x+16)-p.x)<26&&Math.abs((player.y+32)-p.y)<42){
+        if(player.lives<3)player.lives++;
+        player.score+=1000;
+        createParticles(p.x,p.y,'#00ffff',15);
+        floatingTexts.push({text:'FUEL RECOVERED!',x:player.x+16,y:player.y-20,timer:1.5,color:'#00ffff'});
+        sfxPickup();
+        pickups.splice(i,1);continue;
+      }
+    }
+    if(p.y>700)pickups.splice(i,1);
+  }
+
+  // Particles
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i];
+    p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;
+    if(p.life<=0)particles.splice(i,1);
+  }
+
+  // Multiplayer publish
+  if(roomCode&&Date.now()-lastPublish>180){publishRaceState();lastPublish=Date.now();}
+}
+
+// ─── Draw ─────────────────────────────────────────────────────────────────────
+function draw(){
+  // Background / grass
+  ctx.fillStyle='#4CAF50';
+  ctx.fillRect(0,0,800,600);
+
+  // Road
+  ctx.fillStyle='#333';
+  ctx.fillRect(ROAD_X,0,ROAD_W,600);
+
+  // Rumble strips
+  const stripH=40;
+  const off=bgOffsetY%(stripH*2);
+  for(let y=-stripH*2;y<600;y+=stripH){
+    ctx.fillStyle=Math.floor((y+off)/stripH)%2===0?'white':'red';
+    ctx.fillRect(ROAD_X-10,y,10,stripH);
+    ctx.fillRect(ROAD_X+ROAD_W,y,10,stripH);
+  }
+
+  // Lane markings
+  ctx.fillStyle='rgba(255,255,255,0.5)';
+  for(let y=-100+(bgOffsetY%100);y<600;y+=100){
+    ctx.fillRect(ROAD_X+ROAD_W/4-2,y,4,50);
+    ctx.fillRect(ROAD_X+ROAD_W/2-2,y,4,50);
+    ctx.fillRect(ROAD_X+ROAD_W*0.75-2,y,4,50);
+  }
+
+  // Gas cans
+  pickups.forEach(p=>drawGasCan(p.x,p.y));
+
+  // Traffic entities
+  entities.forEach(e=>{
+    drawCar(e.x,e.y,e.w,e.h,e.color,false,0);
+    // Turn signal blink when switching
+    if(e.switchTimer>0&&e.switchTimer<0.5){
+      ctx.fillStyle='yellow';
+      const isLeft=(ROAD_X+(e.lane*ROAD_W/4))<e.x;
+      if(Math.floor(Date.now()/100)%2===0){
+        ctx.fillRect(e.x+(isLeft?-4:e.w),e.y+10,4,8);
+      }
+    }
+  });
+
+  // Particles
+  particles.forEach(p=>{
+    ctx.fillStyle=p.color;
+    ctx.globalAlpha=p.life;
+    ctx.fillRect(p.x,p.y,4,4);
+    ctx.globalAlpha=1.0;
+  });
+
+  // Opponent ghost (multiplayer)
+  if(ghost.visible){
+    ctx.save();ctx.globalAlpha=0.4;
+    drawCar(ghost.x,ghost.y,32,64,'#36eaff',false,0);
+    ctx.restore();
+  }
+
+  // Player car
+  if(gameState==='playing'||gameState==='gameover'){
+    if(player.invulnerable<=0||Math.floor(Date.now()/100)%2===0){
+      drawCar(player.x,player.y,player.w,player.h,player.color,true,player.spinAngle);
+      // Exhaust
+      if(player.speed>100&&player.invulnerable<=0){
+        ctx.fillStyle=player.isBoosting?'#00ffff':'rgba(255,255,255,0.5)';
+        ctx.fillRect(player.x+8,player.y+player.h,4,Math.random()*20);
+        ctx.fillRect(player.x+20,player.y+player.h,4,Math.random()*20);
+      }
+    }
+  }
+
+  // Floating texts
+  floatingTexts.forEach(ft=>{
+    if(Math.floor(ft.timer*15)%2===0){
+      ctx.save();
+      ctx.fillStyle=ft.color;
+      ctx.font='10px "Press Start 2P"';
+      ctx.textAlign='center';
+      ctx.shadowColor='black';ctx.shadowBlur=4;
+      ctx.fillText(ft.text,ft.x,ft.y);
+      ctx.restore();
+    }
+  });
+
+  // HUD (canvas drawn, only when playing)
+  if(gameState==='playing')drawHUD();
+}
+
+function drawHUD(){
+  // HUD background box
+  ctx.fillStyle='rgba(0,0,0,0.7)';
+  ctx.fillRect(10,10,185,295);
+
+  // Score
+  ctx.fillStyle='white';ctx.font='16px "Press Start 2P"';ctx.textAlign='left';
+  ctx.fillText('SCORE',20,40);
+  ctx.fillStyle='yellow';
+  ctx.fillText(Math.floor(player.score),20,65);
+
+  // Timer (upper right)
+  ctx.fillStyle='rgba(0,0,0,0.7)';
+  ctx.fillRect(620,10,170,50);
+  ctx.fillStyle='#00ffff';ctx.font='10px "Press Start 2P"';
+  ctx.textAlign='right';ctx.fillText('TIME',790,30);
+  ctx.fillStyle='white';ctx.font='16px "Press Start 2P"';
+  const m=Math.floor(player.playTime/60);
+  const s=Math.floor(player.playTime%60);
+  const ms=Math.floor((player.playTime*100)%100);
+  ctx.fillText(`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(ms).padStart(2,'0')}`,790,50);
+  ctx.textAlign='left';
+
+  // Speed bar label + shift prompt
+  ctx.fillStyle='white';ctx.font='10px "Press Start 2P"';
+  ctx.fillText('SPEED',20,95);
+  const maxSpeedo=gearStats[3]?gearStats[3].max:700;
+  if(!player.isBoosting&&gearStats[player.gear]){
+    if(player.gear<3&&player.speed>=gearStats[player.gear].max-20){
+      if(Math.floor(Date.now()/150)%2===0){ctx.fillStyle='#00ffff';ctx.fillText('SHIFT UP!',95,95);}
+    }else if(player.gear>1&&player.speed<=gearStats[player.gear-1].max+30){
+      if(Math.floor(Date.now()/150)%2===0){ctx.fillStyle='#e53e3e';ctx.fillText('SHIFT DOWN!',80,95);}
+    }
+  }
+
+  // Speed bar
+  ctx.fillStyle='#555';ctx.fillRect(20,105,140,10);
+  if(gearStats[player.gear]){
+    ctx.fillStyle=player.isBoosting?'#00ffff':(player.wrongGearTimer>0&&!player.isBoosting?'#e53e3e':'#3182ce');
+  }
+  ctx.fillRect(20,105,140*Math.min(1,player.speed/maxSpeedo),10);
+  // Gear notches
+  ctx.fillStyle='white';
+  if(gearStats[1]&&gearStats[2]){
+    ctx.fillRect(20+140*(gearStats[1].max/maxSpeedo),105,2,10);
+    ctx.fillRect(20+140*(gearStats[2].max/maxSpeedo),105,2,10);
+  }
+
+  // Boost meter
+  ctx.fillStyle='white';ctx.font='10px "Press Start 2P"';
+  ctx.fillText('BOOST',20,140);
+  ctx.fillStyle='#222';ctx.strokeStyle='#fff';ctx.lineWidth=2;
+  ctx.strokeRect(20,150,140,10);
+  if(player.boostMeter>=100){
+    ctx.fillStyle=Math.floor(Date.now()/100)%2===0?'#00ffff':'white';
+  }else{ctx.fillStyle='#00ffff';}
+  ctx.fillRect(20,150,140*(player.boostMeter/100),10);
+
+  // Gear indicator
+  ctx.fillStyle='white';ctx.font='10px "Press Start 2P"';
+  ctx.fillText('GEAR:',20,185);
+  ctx.fillStyle=player.isBoosting?'#00ffff':'yellow';
+  ctx.font='14px "Press Start 2P"';
+  ctx.fillText(player.isBoosting?'B':String(player.gear),85,185);
+
+  // Lives (fuel cans)
+  ctx.fillStyle='white';ctx.font='10px "Press Start 2P"';
+  ctx.fillText('LIVES',20,220);
+  for(let i=0;i<3;i++){
+    const hx=35+i*30,hy=235;
+    if(i<player.lives){
+      ctx.fillStyle='#e53e3e';ctx.fillRect(hx-8,hy,16,18);
+      ctx.fillStyle='#ccc';ctx.fillRect(hx-4,hy-4,8,4);
+      ctx.fillStyle='#8b0000';ctx.fillRect(hx-8,hy+4,16,3);
+      ctx.fillStyle='white';ctx.font='8px "Press Start 2P"';ctx.textAlign='center';
+      ctx.fillText('F',hx,hy+15);ctx.textAlign='left';
+    }else{
+      ctx.fillStyle='#555';ctx.fillRect(hx-8,hy,16,18);
+      ctx.fillStyle='#333';ctx.fillRect(hx-4,hy-4,8,4);
+    }
+  }
+
+  // Engine stress warning
+  if(player.wrongGearTimer>0&&!player.isBoosting&&player.invulnerable<=0){
+    ctx.fillStyle=Math.floor(Date.now()/100)%2===0?'red':'yellow';
+    ctx.font='8px "Press Start 2P"';ctx.fillText('STRESS!',105,220);
+    ctx.fillStyle='#555';ctx.fillRect(105,230,60,8);
+    ctx.fillStyle='red';ctx.fillRect(105,230,60*(player.wrongGearTimer/2.0),8);
+  }
+}
+
+// ─── Game loop ────────────────────────────────────────────────────────────────
+function gameLoop(timestamp){
+  let dt=(timestamp-lastTime)/1000;
+  if(dt>0.1)dt=0.1;
+  lastTime=timestamp;
+  update(dt);
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+requestAnimationFrame(gameLoop);
+
+// ─── Screen management ────────────────────────────────────────────────────────
+function hideArcadeOverlays(){
+  ['splash-screen','menu-screen','gameover-screen','highscores-screen'].forEach(id=>{
+    el(id).classList.add('hidden');
+  });
+}
+
+function showScreen(id){
+  hideArcadeOverlays();
+  if(id)el(id).classList.remove('hidden');
+}
+
+function startFromSplash(){
+  if(gameState!=='splash')return;
+  gameState='menu';
+  showScreen('menu-screen');
+}
+
+function startArcadeGame(){
+  hideArcadeOverlays();
+  gameState='playing';
+  initGame();
+}
+
+// startGame — for solo / menu button
+function startGame(){
+  sfxClick();
+  startArcadeGame();
+}
+
+function triggerGameOver(){
+  gameState='gameover';
+  el('final-score').textContent=Math.floor(player.score);
+  showScreen('gameover-screen');
+
+  // Multiplayer result area — hide in solo
+  const mpArea=el('mpResultArea');
+  if(mpArea){
+    if(roomCode&&roomData?.status==='finished'){showMpResult();}
+    else{mpArea.classList.add('hidden');}
+  }
+
+  // High score check
+  let isHigh=highScores.length<5||player.score>highScores[highScores.length-1].score;
+  const hsBox=el('new-highscore-box');
+  const btnBox=el('gameover-buttons');
+  if(isHigh&&player.score>0){
+    hsBox.classList.add('visible');hsBox.style.display='flex';
+    btnBox.style.display='none';
+    el('initials-input').value='';el('initials-input').focus();
+  }else{
+    hsBox.classList.remove('visible');hsBox.style.display='none';
+    btnBox.style.display='block';
+  }
+}
+
+function saveHighScore(){
+  let initials=(el('initials-input').value||'???').toUpperCase();
+  initials=initials.substring(0,3)||'???';
+  highScores.push({name:initials,score:Math.floor(player.score)});
+  highScores.sort((a,b)=>b.score-a.score);
+  if(highScores.length>5)highScores.pop();
+  el('new-highscore-box').style.display='none';
+  el('gameover-buttons').style.display='block';
+  showScreen('highscores-screen');
+  populateHighScores();
+}
+
+function populateHighScores(){
+  const list=el('highscore-list');list.innerHTML='';
+  highScores.forEach((hs,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td style="padding:8px 4px;color:#9ca3af">#${i+1}</td><td style="padding:8px 4px;color:${i===0?'gold':'white'}">${hs.name}</td><td style="padding:8px 4px;text-align:right">${hs.score}</td>`;
+    list.appendChild(tr);
+  });
+}
+
+// ─── Button handlers ──────────────────────────────────────────────────────────
 el('createBtn').onclick=createRoom;
 el('joinBtn').onclick=()=>joinRoom(joinCodeInput.value);
 readyBtn.onclick=toggleReady;
 leaveBtn.onclick=leaveRoom;
-el('closeResultBtn').onclick=()=>{gameover.style.display='none'};
+el('soloBtn').onclick=()=>{sfxClick();showScreen('menu-screen');gameState='menu';};
+el('menuStartBtn').onclick=startGame;
+el('menuHSBtn').onclick=()=>{showScreen('highscores-screen');populateHighScores();};
+el('goRetryBtn').onclick=startGame;
+el('goMenuBtn').onclick=()=>{gameState='menu';showScreen('menu-screen');};
+el('saveHSBtn').onclick=saveHighScore;
+el('hsBackBtn').onclick=()=>{gameState='menu';showScreen('menu-screen');};
+el('splash-screen').addEventListener('click',startFromSplash);
+
 </script>
 </body>
 </html>
