@@ -105,3 +105,75 @@ The following are **deferred** to Phase 2:
 ---
 
 _Last updated: Restoration Phase 1 pre-implementation_
+
+---
+
+## Phase 3 Restored Gameplay QA
+
+**Date:** 2026-05-29  
+**QA method:** Static code analysis (Playwright blocked on localhost; server confirmed live at 200 OK, 62 KB)
+
+### Status: PASS (with fixes applied)
+
+### Solo gameplay audit — all systems PRESENT
+
+| System | Status | Notes |
+|---|---|---|
+| splash/menu | ✅ PASS | bounce-in overlay, click/key advance, menu Start Engine / High Scores |
+| Start Engine | ✅ PASS | `startArcadeGame()` → `initGame()` → gameLoop running |
+| vertical road | ✅ PASS | 800×600, ROAD_X=200, ROAD_W=400, scrolling markings, rumble strips |
+| traffic | ✅ PASS | `spawnEntity()`, up to 12, AABB collision |
+| lane-switching AI | ✅ PASS | switchTimer, smooth lerp, turn signal blink, tire smoke |
+| A/Z gear shifting | ✅ PASS | gearStats[1..3], speed caps 250/450/700 |
+| perfect shift | ✅ PASS | +500 pts within ±50, floating text, sfx |
+| boost | ✅ PASS | near-miss filled; Space at 100%; 3s at 900 px/s; gamepad X button |
+| near miss | ✅ PASS | +500 score, +25 boostMeter, sfxNearMiss |
+| fuel/lives | ✅ PASS | 3 cans, drain 30s, crash –1, 0 → game over |
+| gas pickups | ✅ PASS | drawGasCan bounce, +1 life / +1000 score |
+| weather/rain | ✅ PASS | clear↔rain cycling, intensity ramp, "RAIN!" text |
+| puddles/hydroplane | ✅ PASS | spawned during rain, AABB collision → handleCrash(true) |
+| birds/flocks | ✅ PASS | flock 3–8, cross-screen, wing flap animation |
+| scenery/parallax | ✅ PASS | 10 trees on init, near/far layers, continuous spawn |
+| crash/spinout | ✅ PASS | invulnerable 2s, 720° spinAngle, canvas shake, particles |
+| game over | ✅ PASS | "CRASHED OUT" overlay, final score |
+| high scores | ✅ PASS | top-5 local, initials entry, table render |
+| mobile controls | ✅ PASS | HTML element present, touch bindings + touchcancel; hidden ≥769px |
+| gamepad guard | ✅ PASS | `pollGamepad()` runs per frame; connect/disconnect events; degrades safely without pad |
+| W/S aliases | ✅ PASS | KeyW/KeyS map to ArrowUp/ArrowDown |
+| sound guard | ✅ PASS | AudioContext only initialized on user gesture; failure caught silently |
+
+### Multiplayer shell regression
+
+| Check | Status |
+|---|---|
+| Firebase placeholder guard | ✅ PASS — `isConfigured` false, solo works, multiplayer UI does not crash |
+| Prototype limitation text | ✅ PASS — visible in sidebar |
+| No credentials present | ✅ PASS — 0 hits for real API keys in all scanned files |
+| Room UI renders | ✅ PASS — Create/Join/Ready/Leave buttons present |
+| Countdown → arcade handoff | ✅ PASS — `startLocalRaceOnce()` calls `startArcadeGame()` |
+| Ghost/progress sync | ✅ PASS — `opponentStateUnsub` wired; ghost renders as semi-transparent car |
+| Finish reporting | ✅ PASS — `publishFinish()` uses `player.score` |
+| Leave-room cleanup | ✅ PASS — `cleanupListeners()` clears all unsubs and timers |
+
+### Firebase live retest
+**Not performed** — no local Firebase config was provided for this pass.
+
+### Issues found and fixed
+
+| # | Severity | Issue | Fix applied |
+|---|---|---|---|
+| 1 | **Blocker** | Rain draw batch left `lineWidth=1.5` and `strokeStyle` dirty in canvas state — leaked into HUD borders and floating text rendering | Wrapped rain draw in `ctx.save()`/`ctx.restore()` + added `ctx.lineCap='round'` |
+| 2 | **Major** | Birds rendered before rain tint overlay → birds invisible during rain | Moved `birds.forEach(drawBird)` to after rain tint block |
+| 3 | **Major** | Player spawns with `invulnerable=0` — first traffic car can collide immediately on game start | Added 2.0s grace invulnerability in `initGame()` |
+| 4 | **Cosmetic** | `loneCarTimer` declared and reset in `initGame` but never decremented (dead variable) | Removed declaration and reset, replaced with explanatory comment |
+
+### Gameplay feel assessment
+
+- **Restored arcade identity:** YES. Vertical road, lane traffic, gear shifting, near-miss scoring, fuel pressure, rain hazard. Feels like Octane Racer.
+- **Still feels aimless:** NO. Score pressure (speed²×time), gear efficiency, near-miss chain, fuel drain, rain handling penalty all create moment-to-moment decisions.
+- **Circular test track:** Fully removed. No `track` object, no `player.a`/`player.v` angle physics.
+- **HUD meaningful:** YES. Score, speed+gear notches, boost fill bar, gear indicator, fuel can lives, engine stress warning all give real-time feedback.
+
+### Asset ingestion
+
+Still paused until user visually approves restored gameplay.

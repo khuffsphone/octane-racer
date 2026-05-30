@@ -682,7 +682,7 @@ let weather={type:'clear',intensity:0,timer:12,drops:[]};
 let bgOffsetY=0;
 let cameraSpeed=0;
 let timeSinceLastSpawn=0;
-let loneCarTimer=10.0; // Phase 2: spacing timer
+// loneCarTimer removed — spacing handled by spawnEntity() density check
 
 // Ghost for multiplayer opponent
 const ghost={x:400,y:500,speed:0,gear:1,visible:false};
@@ -826,7 +826,9 @@ function initGame(){
   entities=[];pickups=[];puddles=[];birds=[];particles=[];floatingTexts=[];
   scenery=[];
   weather={type:'clear',intensity:0,timer:12+Math.random()*8,drops:[]};
-  bgOffsetY=0;cameraSpeed=0;timeSinceLastSpawn=0;loneCarTimer=10.0;
+  bgOffsetY=0;cameraSpeed=0;timeSinceLastSpawn=0;
+  // Grace period: 2s invulnerability at spawn so first traffic can't instant-kill
+  player.invulnerable=2.0;
   // Init scenery
   for(let i=0;i<10;i++)spawnScenery(true);
 }
@@ -1253,24 +1255,27 @@ function draw(){
     }
   }
 
-  // Phase 2: Birds — highest layer
-  birds.forEach(b=>drawBird(b.x,b.y,b.wingTimer));
-
-  // Phase 2: Rain overlay
+  // Phase 2: Rain overlay (before birds — birds fly above the rain tint)
   if(weather.intensity>0){
-    // Blue tint
+    ctx.save();
+    // Blue tint over road/world
     ctx.fillStyle=`rgba(10,30,70,${0.4*weather.intensity})`;
     ctx.fillRect(0,0,800,600);
-    // Rain drops
+    // Rain drops — batched in one path to avoid per-drop state changes
     ctx.strokeStyle=`rgba(180,200,255,${0.5*weather.intensity})`;
     ctx.lineWidth=1.5;
+    ctx.lineCap='round';
     ctx.beginPath();
     weather.drops.forEach(d=>{
       ctx.moveTo(d.x,d.y);
       ctx.lineTo(d.x-d.length*0.2,d.y+d.length);
     });
     ctx.stroke();
+    ctx.restore(); // restore lineWidth, strokeStyle, lineCap to canvas defaults
   }
+
+  // Phase 2: Birds — rendered AFTER rain tint so they are always visible
+  birds.forEach(b=>drawBird(b.x,b.y,b.wingTimer));
 
   // Floating texts
   floatingTexts.forEach(ft=>{
