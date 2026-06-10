@@ -5,55 +5,71 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Octane Street Racer — Firebase Lobby Prototype</title>
 <style>
-:root{--bg:#070b14;--panel:#0d1730ee;--line:#2a3f70;--text:#e8f1ff;--muted:#9cb1d8;--cyan:#36eaff;--pink:#ff3fb4;--yellow:#ffd166;--ok:#65f59a;--bad:#ff6b6b}
+@import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Permanent+Marker&display=swap');
+:root{--bg:#0a0a0d;--panel:#0e0e16f2;--line:#33334a;--text:#f2f2ee;--muted:#9b9bac;--cyan:#28e9ff;--pink:#ff2975;--acid:#b6ff00;--yellow:#ffd300;--ok:#b6ff00;--bad:#ff3355}
 *{box-sizing:border-box}
-body{margin:0;color:var(--text);font-family:Inter,'Segoe UI',system-ui,sans-serif;background:radial-gradient(900px 460px at 85% 0,#36eaff22,transparent),radial-gradient(800px 500px at 0 100%,#ff3fb422,transparent),linear-gradient(#0d1730,#070b14);min-height:100vh}
-.app{max-width:1220px;margin:0 auto;padding:16px;display:grid;grid-template-columns:360px 1fr;gap:14px}
+body{margin:0;color:var(--text);font-family:Inter,'Segoe UI',system-ui,sans-serif;background:radial-gradient(700px 380px at 88% -5%,#ff297522,transparent),radial-gradient(640px 420px at -5% 105%,#b6ff0014,transparent),radial-gradient(500px 320px at 50% 55%,#28e9ff0a,transparent),var(--bg);min-height:100vh}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:2;background:repeating-linear-gradient(0deg,transparent 0 3px,#ffffff04 3px 4px)}
+.app{position:relative;z-index:1;max-width:1220px;margin:0 auto;padding:16px;display:grid;grid-template-columns:360px 1fr;gap:14px}
 @media(max-width:980px){.app{grid-template-columns:1fr}}
-.panel{background:linear-gradient(#111a30f5,var(--panel));border:1px solid var(--line);border-radius:16px;box-shadow:0 18px 40px #0008}
+.panel{background:linear-gradient(#14141ff5,var(--panel));border:2px solid #000;border-radius:4px;box-shadow:6px 6px 0 #000c,0 0 0 1px var(--line)}
 .sidebar{padding:14px;display:flex;flex-direction:column;gap:10px}
-.section{border:1px solid #9cb1d844;border-radius:12px;padding:12px;background:#080d199e}
-h1{margin:0;font-size:1.25rem;letter-spacing:.08em;text-transform:uppercase;text-shadow:0 0 18px #36eaff77}
-h2{margin:0 0 8px;color:var(--cyan);font-size:.9rem;letter-spacing:.08em;text-transform:uppercase}
+.section{position:relative;border:1px solid #3a3a52;border-radius:3px;padding:12px;background:#0a0a11d8}
+.section::after{content:'';position:absolute;top:-1px;left:-1px;width:22px;height:22px;border-top:3px solid var(--pink);border-left:3px solid var(--pink);pointer-events:none}
+h1{margin:0;font-family:'Archivo Black',Inter,sans-serif;font-size:1.45rem;letter-spacing:.04em;text-transform:uppercase;transform:skewX(-6deg);animation:glitch 4s infinite steps(1)}
+@keyframes glitch{0%,88%,100%{text-shadow:3px 0 var(--pink),-3px 0 var(--cyan)}90%{text-shadow:-4px 2px var(--pink),4px -2px var(--cyan);transform:skewX(-6deg) translateX(3px)}92%{text-shadow:4px -2px var(--acid),-4px 2px var(--pink);transform:skewX(-6deg) translateX(-3px)}94%{text-shadow:3px 0 var(--pink),-3px 0 var(--cyan);transform:skewX(-6deg)}}
+.tagline{font-family:'Permanent Marker',cursive;color:var(--acid);font-size:.95rem;letter-spacing:.05em;transform:rotate(-1.5deg);text-shadow:0 0 12px #b6ff0066}
+.tape{height:10px;background:repeating-linear-gradient(-45deg,var(--yellow) 0 14px,#0a0a0d 14px 28px);border:1px solid #000;margin:2px 0}
+h2{margin:0 0 8px;color:var(--cyan);font-family:'Archivo Black',Inter,sans-serif;font-size:.78rem;letter-spacing:.14em;text-transform:uppercase;transform:skewX(-4deg)}
 .row{display:flex;gap:8px;align-items:center}
-input,button{height:40px;border-radius:10px;font:inherit}
-input{width:100%;border:1px solid #365089;background:#0d1730;color:var(--text);padding:0 10px;text-transform:uppercase}
-button{border:0;padding:0 14px;font-weight:800;cursor:pointer;background:linear-gradient(120deg,var(--cyan),#89f5ff);color:#071124;text-transform:uppercase}
-.alt{background:linear-gradient(120deg,#ff79cc,var(--pink));color:white}
-.ghost{background:#142340;color:var(--text);border:1px solid #49629b}
-button:disabled{filter:grayscale(.4) brightness(.7);cursor:not-allowed}
-.pill{display:inline-flex;gap:7px;align-items:center;padding:6px 10px;border-radius:999px;border:1px solid #36eaff80;background:#36eaff1a;font-size:.82rem}
+input,button{height:40px;border-radius:2px;font:inherit}
+input{width:100%;border:2px solid #000;outline:1px solid #44446a;background:#08080e;color:var(--text);padding:0 10px;text-transform:uppercase;font-weight:700;letter-spacing:.08em}
+input:focus{outline:2px solid var(--pink)}
+button{border:2px solid #000;padding:0 14px;font-weight:900;cursor:pointer;background:var(--acid);color:#0a0a0d;text-transform:uppercase;letter-spacing:.05em;transform:skewX(-6deg);box-shadow:3px 3px 0 #000;transition:transform .06s,box-shadow .06s}
+button:hover:not(:disabled){transform:skewX(-6deg) translate(-1px,-1px);box-shadow:5px 5px 0 #000}
+button:active:not(:disabled){transform:skewX(-6deg) translate(2px,2px);box-shadow:1px 1px 0 #000}
+.alt{background:var(--pink);color:#fff}
+.ghost{background:#15151f;color:var(--text);border:2px solid var(--pink);box-shadow:3px 3px 0 #ff297544}
+button:disabled{filter:grayscale(.6) brightness(.55);cursor:not-allowed}
+.pill{display:inline-flex;gap:7px;align-items:center;padding:6px 10px;border:1px solid var(--cyan);background:#28e9ff12;font-size:.82rem;transform:rotate(-.6deg)}
 .dot{width:8px;height:8px;border-radius:50%;background:#ffbf47;box-shadow:0 0 10px #ffbf47}
 .dot.ok{background:var(--ok);box-shadow:0 0 10px var(--ok)}
 .players{list-style:none;padding:0;margin:0;display:grid;gap:7px}
-.players li{display:flex;justify-content:space-between;gap:8px;padding:9px;border-radius:9px;background:#14223eb8;border:1px solid #9cb1d83d}
-.tiny{font-size:.78rem;color:#b9c7e4;line-height:1.45}
-.ready{color:var(--ok);font-weight:800}
+.players li{display:flex;justify-content:space-between;gap:8px;padding:9px;border-radius:2px;background:#13131d;border:1px solid #3a3a52;border-left:4px solid var(--pink);transform:rotate(-.4deg)}
+.players li:nth-child(2n){transform:rotate(.4deg);border-left-color:var(--cyan)}
+.tiny{font-size:.78rem;color:#b9b9c9;line-height:1.45}
+.ready{color:var(--ok);font-weight:800;text-shadow:0 0 8px #b6ff0088}
 .err{color:var(--bad)}
 .stage{position:relative;padding:10px;min-height:520px}
-canvas{width:100%;max-width:840px;aspect-ratio:4/3;display:block;margin:0 auto;border-radius:14px;border:1px solid #27406e;background:#111;box-shadow:0 0 30px #36eaff24}
-.hud{position:absolute;top:18px;left:20px;right:20px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-weight:800;text-shadow:0 2px 8px black;pointer-events:none}
+canvas{width:100%;max-width:840px;aspect-ratio:4/3;display:block;margin:0 auto;border-radius:4px;border:2px solid #000;outline:1px solid #3a3a52;background:#0a0a0d;box-shadow:0 0 34px #ff297522,0 0 60px #28e9ff14,8px 8px 0 #000a}
+.hud{position:absolute;top:18px;left:20px;right:20px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-weight:800;pointer-events:none}
+.hud>div{background:#0a0a0de8;border:1px solid #3a3a52;padding:4px 10px;font-size:.85rem;letter-spacing:.05em;transform:skewX(-6deg);box-shadow:2px 2px 0 #000}
 .countdown,.gameover{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
-.countdown strong{font-size:clamp(2.4rem,9vw,5rem);color:var(--yellow);text-shadow:0 0 24px #ffd166aa}
+.countdown strong{font-family:'Permanent Marker',cursive;font-size:clamp(3rem,11vw,6.5rem);color:var(--acid);text-shadow:4px 0 var(--pink),-4px 0 var(--cyan),0 0 38px #b6ff0088;animation:slam .9s infinite}
+@keyframes slam{0%{transform:scale(1.25) rotate(-3deg)}12%{transform:scale(1) rotate(-2deg)}100%{transform:scale(.96) rotate(-2deg)}}
 .gameover{display:none}
-.gameover .card{pointer-events:auto;background:#080d19f0;padding:18px;border:1px solid #48639e;border-radius:14px;text-align:center;min-width:300px;box-shadow:0 16px 45px #0009}
-.kbd{color:var(--yellow)}
-#soundBtn{width:100%}
-#gamepadStatus{font-size:.75rem;color:var(--muted);padding:5px 10px;border-radius:8px;background:#080d199e;border:1px solid #9cb1d844}
+.gameover .card{pointer-events:auto;background:#0c0c13f4;padding:22px 26px;border:3px solid var(--pink);border-radius:2px;text-align:center;min-width:300px;box-shadow:8px 8px 0 #000,0 0 40px #ff297533;transform:rotate(-1deg)}
+.gameover .card h3{font-family:'Archivo Black',Inter,sans-serif;text-transform:uppercase;letter-spacing:.08em;font-size:1.4rem;color:var(--acid);text-shadow:3px 0 var(--pink),-3px 0 var(--cyan)}
+.kbd{color:var(--yellow);font-weight:700}
+#soundBtn,#musicBtn{flex:1;width:auto}
+#gamepadStatus{font-size:.75rem;color:var(--muted);padding:5px 10px;background:#0a0a11d8;border:1px dashed #44446a}
+#assetStatusLabel{font-size:.72rem;color:var(--muted);font-family:'Permanent Marker',cursive;transform:rotate(-1deg)}
 </style>
 </head>
 <body>
 <div class="app">
   <aside class="panel sidebar">
     <h1>Octane Street Racer</h1>
+    <div class="tagline">Burn the grid. No brakes, no masters.</div>
+    <div class="tape"></div>
     <div class="tiny">Arcade lobby + race-state sync prototype. Firebase is not authoritative netcode.</div>
     <div class="pill"><span id="authDot" class="dot"></span><span id="authStatus">Auth pending…</span></div>
 
-    <section class="section"><h2>Pilot</h2>
-      <input id="nameInput" maxlength="20" placeholder="Driver name" value="Rookie"/>
+    <section class="section"><h2>Driver Tag</h2>
+      <input id="nameInput" maxlength="20" placeholder="Spray your tag" value="Rookie"/>
     </section>
 
-    <section class="section"><h2>Multiplayer Lobby</h2>
+    <section class="section"><h2>Street Match</h2>
       <div class="row" style="margin-bottom:8px"><button id="createBtn">Create Room</button></div>
       <div class="row" style="margin-bottom:8px"><input id="joinCodeInput" maxlength="6" placeholder="Room code"/><button id="joinBtn" class="alt">Join</button></div>
       <div class="row"><button id="readyBtn" class="ghost" disabled>Ready Up</button><button id="leaveBtn" class="ghost" disabled>Leave</button></div>
@@ -61,7 +77,7 @@ canvas{width:100%;max-width:840px;aspect-ratio:4/3;display:block;margin:0 auto;b
       <div class="tiny" style="margin-top:6px">Prototype limitation: clients publish their own race state and finish data. Useful for demos, not cheat-proof competitive play.</div>
     </section>
 
-    <section class="section"><h2>Drivers</h2>
+    <section class="section"><h2>The Crew</h2>
       <ul id="playersList" class="players"></ul>
       <div id="lobbyMsg" class="tiny" style="margin-top:8px">No room joined.</div>
     </section>
@@ -75,11 +91,12 @@ canvas{width:100%;max-width:840px;aspect-ratio:4/3;display:block;margin:0 auto;b
       </div>
     </section>
 
-    <section class="section"><h2>Audio</h2>
-      <button id="soundBtn" class="ghost">🔇 Sound Off</button>
+    <section class="section"><h2>Noise</h2>
+      <div class="row"><button id="soundBtn" class="ghost">🔇 Sound Off</button><button id="musicBtn" class="ghost">🎸 Music Off</button></div>
     </section>
 
     <div id="gamepadStatus">Gamepad: not detected</div>
+    <div id="assetStatusLabel">Assets: loading…</div>
     <div id="errorMsg" class="tiny err"></div>
   </aside>
 
@@ -96,7 +113,7 @@ canvas{width:100%;max-width:840px;aspect-ratio:4/3;display:block;margin:0 auto;b
       <div class="card">
         <h3 id="resultTitle" style="margin:0 0 6px">Race Over</h3>
         <div id="resultText" class="tiny">Waiting…</div>
-        <button id="closeResultBtn" class="ghost" style="margin-top:12px">Close</button>
+        <button id="closeResultBtn" class="ghost" style="margin-top:12px">Back to the Street</button>
       </div>
     </div>
   </main>
@@ -142,9 +159,8 @@ const assetState = {
 };
 
 function getAssetBase() {
-  return location.pathname.includes('/experiments/octane-street-racer/')
-    ? './assets/'
-    : './experiments/octane-street-racer/assets/';
+  // Repo was flattened: assets live next to index.html now.
+  return './assets/';
 }
 
 function loadAssetManifest() {
@@ -291,7 +307,7 @@ async function startMultiplayerRace(){
 function syncCountdownUI(){
   const left=Math.ceil(((roomData?.raceStartMs||Date.now())-Date.now())/1000);
   if(left>0){countdownText.textContent=String(left);sfxCountdown()}
-  else{countdownText.textContent='GO!';sfxCountdownGo();clearCountdownTimer();startLocalRaceOnce()}
+  else{countdownText.textContent='GO!';sfxCountdownGo();addShake(9);clearCountdownTimer();startLocalRaceOnce()}
 }
 
 function scheduleCountdown(){clearCountdownTimer();syncCountdownUI();countdownIntervalId=setInterval(syncCountdownUI,1000)}
@@ -321,10 +337,10 @@ async function publishFinish(){
 
 function showResultFromRoom(){
   gameover.style.display='grid';
-  if(roomData?.winnerId==='tie'){resultTitle.textContent='Tie!';resultText.textContent='Both drivers finished at effectively the same time.';sfxFinish();return}
+  if(roomData?.winnerId==='tie'){resultTitle.textContent='Dead Heat!';resultText.textContent='Photo finish — nobody owns the street tonight.';sfxFinish();return}
   if(!roomData?.winnerId){resultTitle.textContent='Race Over';resultText.textContent='Waiting for both finishes…';return}
   const won=roomData.winnerId===uid;
-  resultTitle.textContent=won?'Winner!':'Defeat';resultText.textContent=won?'You finished first.':'Opponent finished first.';
+  resultTitle.textContent=won?'You Own the Street':'Wrecked';resultText.textContent=won?'First across the line. The crown is yours — for now.':'They took it this time. Demand a rematch.';
   if(won)sfxWin();else sfxLose()
 }
 
@@ -343,7 +359,7 @@ async function leaveRoom(){
 let audioCtx=null,soundEnabled=false;
 
 function initAudio(){
-  if(audioCtx)return;
+  if(audioCtx){if(audioCtx.state==='suspended')audioCtx.resume().catch(()=>{});return}
   try{audioCtx=new(window.AudioContext||window.webkitAudioContext)()}catch(e){console.warn('Web Audio unavailable:',e)}
 }
 
@@ -401,10 +417,82 @@ function sfxFinish(){
 function sfxWin(){[523,659,784,1047].forEach((f,i)=>playTone(f,0.2,'sine',0.33,i*0.1))}
 function sfxLose(){[330,277,220].forEach((f,i)=>playTone(f,0.22,'square',0.17,i*0.12))}
 
+// ─── Engine growl (speed-reactive, runs only while sound is on) ──────────────
+let engineOsc=null,engineGain=null;
+function ensureEngine(){
+  if(!audioCtx||engineOsc)return;
+  try{
+    engineOsc=audioCtx.createOscillator();engineGain=audioCtx.createGain();
+    engineOsc.type='sawtooth';engineOsc.frequency.value=50;engineGain.gain.value=0;
+    engineOsc.connect(engineGain);engineGain.connect(audioCtx.destination);engineOsc.start()
+  }catch(e){engineOsc=null;engineGain=null}
+}
+function updateEngineSound(){
+  if(!audioCtx||!engineGain)return;
+  try{
+    const racingNow=roomData?.status==='racing'||!roomCode;
+    const sp=Math.abs(player.v);
+    const target=(soundEnabled&&racingNow&&sp>0.15)?Math.min(0.05,0.012+sp*0.005):0;
+    engineGain.gain.setTargetAtTime(target,audioCtx.currentTime,0.08);
+    engineOsc.frequency.setTargetAtTime(46+sp*26+(boostActive?34:0),audioCtx.currentTime,0.05)
+  }catch(e){}
+}
+
+// ─── Garage-punk backing track (procedural — no audio files) ─────────────────
+// Power-chord downstrokes every eighth over A5–C5–F5–G5, kick on quarters,
+// snare backbeat, hat on eighths. 172 BPM. Lookahead-scheduled on a 30ms timer.
+let musicOn=false,musicTimer=null,musicStep=0,nextNoteTime=0;
+const MUSIC_STEP_DUR=60/172/2;
+const MUSIC_PROG=[110,130.81,87.31,98];
+function chordStab(root,t,vol){
+  [root,root*1.5,root*2].forEach(f=>{
+    const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+    o.type='sawtooth';o.frequency.value=f;
+    o.connect(g);g.connect(audioCtx.destination);
+    g.gain.setValueAtTime(vol*0.33,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.14);
+    o.start(t);o.stop(t+0.16)
+  })
+}
+function drumKick(t){
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.type='sine';o.frequency.setValueAtTime(120,t);o.frequency.exponentialRampToValueAtTime(38,t+0.1);
+  o.connect(g);g.connect(audioCtx.destination);
+  g.gain.setValueAtTime(0.5,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.12);
+  o.start(t);o.stop(t+0.14)
+}
+function noiseBurstAt(t,dur,vol){
+  const n=Math.floor(audioCtx.sampleRate*dur),buf=audioCtx.createBuffer(1,n,audioCtx.sampleRate),d=buf.getChannelData(0);
+  for(let i=0;i<n;i++)d[i]=Math.random()*2-1;
+  const src=audioCtx.createBufferSource(),g=audioCtx.createGain();
+  src.buffer=buf;src.connect(g);g.connect(audioCtx.destination);
+  g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+  src.start(t);src.stop(t+dur+0.01)
+}
+function musicScheduler(){
+  try{
+    while(nextNoteTime<audioCtx.currentTime+0.12){
+      const bar=Math.floor(musicStep/8)%4,sub=musicStep%8;
+      chordStab(MUSIC_PROG[bar],nextNoteTime,sub%2===0?0.16:0.11);
+      if(sub%2===0)drumKick(nextNoteTime);
+      if(sub===2||sub===6)noiseBurstAt(nextNoteTime,0.09,0.25);
+      noiseBurstAt(nextNoteTime,0.025,0.06);
+      musicStep++;nextNoteTime+=MUSIC_STEP_DUR
+    }
+  }catch(e){}
+}
+function toggleMusic(){
+  initAudio();if(!audioCtx)return;
+  musicOn=!musicOn;
+  el('musicBtn').textContent=musicOn?'🎸 Music On':'🎸 Music Off';
+  if(musicOn){musicStep=0;nextNoteTime=audioCtx.currentTime+0.06;musicTimer=setInterval(musicScheduler,30)}
+  else if(musicTimer){clearInterval(musicTimer);musicTimer=null}
+}
+el('musicBtn').onclick=toggleMusic;
+
 el('soundBtn').onclick=()=>{
   initAudio();soundEnabled=!soundEnabled;
   el('soundBtn').textContent=soundEnabled?'🔊 Sound On':'🔇 Sound Off';
-  if(soundEnabled)sfxClick()
+  if(soundEnabled){ensureEngine();sfxClick()}
 };
 
 // ─── Gamepad ─────────────────────────────────────────────────────────────────
@@ -442,7 +530,7 @@ const BOOST_DRAIN=0.022,BOOST_REGEN=0.004,BOOST_THRESH=0.25,BOOST_MAXSPD=11.0;
 const boostParticles=[];
 function emitBoostParticle(x,y,angle){
   const spread=(Math.random()-0.5)*0.9,spd=1.5+Math.random()*2.5;
-  boostParticles.push({x,y,vx:-Math.cos(angle+spread)*spd,vy:-Math.sin(angle+spread)*spd,life:1.0,decay:0.038+Math.random()*0.025,size:3+Math.random()*5,hue:Math.random()>0.4?'#36eaff':'#89f5ff'});
+  boostParticles.push({x,y,vx:-Math.cos(angle+spread)*spd,vy:-Math.sin(angle+spread)*spd,life:1.0,decay:0.038+Math.random()*0.025,size:3+Math.random()*5,hue:Math.random()>0.4?'#28e9ff':'#ff2975'});
   if(boostParticles.length>150)boostParticles.splice(0,15)
 }
 
@@ -452,6 +540,16 @@ const skidMarks=[];
 function emitSkid(x,y){
   skidMarks.push({x,y,life:1.0,decay:0.011,r:4+Math.random()*4});
   if(skidMarks.length>250)skidMarks.splice(0,25)
+}
+
+// ─── Screen shake / sparks (visual juice only — physics untouched) ──────────
+let shake=0;
+function addShake(n){shake=Math.min(16,shake+n)}
+const sparks=[];
+function emitSpark(x,y,baseAngle){
+  const a=baseAngle+Math.PI+(Math.random()-0.5)*1.6,spd=2+Math.random()*3.5;
+  sparks.push({x,y,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd,life:1,decay:0.05+Math.random()*0.04,hue:Math.random()<0.5?'#ffd300':'#ff8c00'});
+  if(sparks.length>120)sparks.splice(0,12)
 }
 
 // ─── Game loop ───────────────────────────────────────────────────────────────
@@ -483,7 +581,8 @@ function updateGame(){
 
     // Boost
     if(isBoost){
-      if(!boostActive){boostActive=true;sfxBoost()} // sound on transition only
+      if(!boostActive){boostActive=true;sfxBoost();addShake(4)} // sound on transition only
+      shake=Math.max(shake,1.6); // low rumble while boosting
       boostCharge=Math.max(0,boostCharge-BOOST_DRAIN);
       if(boostCharge<=0){boostLocked=true;boostActive=false}
       const rx=player.x-Math.cos(player.a)*14,ry=player.y-Math.sin(player.a)*14;
@@ -499,6 +598,7 @@ function updateGame(){
     if(drifting){
       const rx=player.x-Math.cos(player.a)*12,ry=player.y-Math.sin(player.a)*12;
       if(Math.random()>0.25)emitSkid(rx,ry);
+      if(Math.random()>0.5)emitSpark(rx,ry,player.a);
       if(--driftSfxTimer<=0){sfxDrift();driftSfxTimer=20}
     }else driftSfxTimer=0;
 
@@ -519,15 +619,21 @@ function updateGame(){
 
     // Move + bound
     player.x+=Math.cos(player.a)*player.v;player.y+=Math.sin(player.a)*player.v;
+    const preX=player.x,preY=player.y;
     player.x=Math.max(track.x-20,Math.min(track.x+track.w+20,player.x));
     player.y=Math.max(track.y-20,Math.min(track.y+track.h+20,player.y));
+    // Wall scrape: sparks + shake (cosmetic only — velocity unchanged)
+    if((player.x!==preX||player.y!==preY)&&Math.abs(player.v)>2.2){
+      addShake(Math.min(5,Math.abs(player.v)*0.7));
+      if(Math.random()>0.3)emitSpark(player.x,player.y,player.a)
+    }
 
     // Progress
     player.progress=Math.max(0,Math.min(1,((player.x-track.x)/track.w)*0.5+((player.y-track.y)/track.h)*0.5));
 
     // Finish
     if(roomCode&&roomData?.status==='racing'&&!player.finished&&player.progress>=0.995){
-      player.finished=true;sfxFinish();publishFinish()
+      player.finished=true;sfxFinish();addShake(12);publishFinish()
     }
 
     // Publish throttle (180 ms gate — not every frame)
@@ -536,7 +642,10 @@ function updateGame(){
     // Particle update
     for(let i=boostParticles.length-1;i>=0;i--){const p=boostParticles[i];p.x+=p.vx;p.y+=p.vy;p.life-=p.decay;if(p.life<=0)boostParticles.splice(i,1)}
     for(let i=skidMarks.length-1;i>=0;i--){skidMarks[i].life-=skidMarks[i].decay;if(skidMarks[i].life<=0)skidMarks.splice(i,1)}
+    for(let i=sparks.length-1;i>=0;i--){const p=sparks[i];p.x+=p.vx;p.y+=p.vy;p.vy+=0.08;p.life-=p.decay;if(p.life<=0)sparks.splice(i,1)}
   }
+
+  updateEngineSound();
 
   // HUD
   hudSpeed.textContent='Speed: '+Math.round(Math.abs(player.v)*26);
@@ -547,27 +656,135 @@ function updateGame(){
 }
 
 // ─── Render ──────────────────────────────────────────────────────────────────
+let tick=0;
+
+// Pre-rendered grimy asphalt base: noise speckle, oil stains, spray splatter.
+let asphaltCanvas=null;
+function buildAsphalt(){
+  asphaltCanvas=document.createElement('canvas');
+  asphaltCanvas.width=canvas.width;asphaltCanvas.height=canvas.height;
+  const a=asphaltCanvas.getContext('2d');
+  a.fillStyle='#0a0a0f';a.fillRect(0,0,canvas.width,canvas.height);
+  a.strokeStyle='#17171f';a.lineWidth=88;a.strokeRect(track.x,track.y,track.w,track.h);
+  a.strokeStyle='#1e1e28';a.lineWidth=66;a.strokeRect(track.x,track.y,track.w,track.h);
+  for(let i=0;i<5200;i++){
+    a.fillStyle=Math.random()>0.5?'rgba(255,255,255,0.022)':'rgba(0,0,0,0.3)';
+    a.fillRect(Math.random()*canvas.width,Math.random()*canvas.height,1.6,1.6)
+  }
+  for(let i=0;i<14;i++){
+    const x=track.x+Math.random()*track.w,y=track.y+Math.random()*track.h,r=14+Math.random()*30;
+    const g=a.createRadialGradient(x,y,2,x,y,r);
+    g.addColorStop(0,'rgba(0,0,0,0.34)');g.addColorStop(1,'rgba(0,0,0,0)');
+    a.fillStyle=g;a.beginPath();a.arc(x,y,r,0,Math.PI*2);a.fill()
+  }
+  // Spray splatter clusters around the infield graffiti
+  const splats=[['rgba(182,255,0,',470,300],['rgba(255,41,117,',525,415],['rgba(40,233,255,',415,455]];
+  for(const [c,sx,sy] of splats){
+    for(let i=0;i<26;i++){
+      const ang=Math.random()*Math.PI*2,d=Math.random()*46;
+      a.fillStyle=c+(0.04+Math.random()*0.1).toFixed(3)+')';
+      a.beginPath();a.arc(sx+Math.cos(ang)*d,sy+Math.sin(ang)*d*0.6,1+Math.random()*3.4,0,Math.PI*2);a.fill()
+    }
+  }
+}
+
+// Pre-rendered scanlines + vignette, composited over everything each frame.
+let screenFxCanvas=null;
+function buildScreenFx(){
+  screenFxCanvas=document.createElement('canvas');
+  screenFxCanvas.width=canvas.width;screenFxCanvas.height=canvas.height;
+  const s=screenFxCanvas.getContext('2d');
+  s.fillStyle='rgba(0,0,0,0.16)';
+  for(let y=0;y<canvas.height;y+=4)s.fillRect(0,y,canvas.width,1.5);
+  const g=s.createRadialGradient(canvas.width/2,canvas.height/2,280,canvas.width/2,canvas.height/2,580);
+  g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,0.42)');
+  s.fillStyle=g;s.fillRect(0,0,canvas.width,canvas.height)
+}
+
+function drawCheckers(x,y,w,h,color){
+  const s=w/2;
+  for(let r=0;r<Math.floor(h/s);r++)for(let c=0;c<2;c++){
+    ctx.fillStyle=(r+c)%2===0?color:'#0a0a0d';
+    ctx.fillRect(x+c*s,y+r*s,s,s)
+  }
+}
+
 function drawTrack(){
-  if (assetState.images.trackBg) {
-    ctx.drawImage(assetState.images.trackBg, 0, 0, canvas.width, canvas.height);
-  } else {
-    ctx.fillStyle='#0e1322';ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.strokeStyle='#4a5b80';ctx.lineWidth=88;ctx.strokeRect(track.x,track.y,track.w,track.h);
-    ctx.strokeStyle='#1a243b';ctx.lineWidth=66;ctx.strokeRect(track.x,track.y,track.w,track.h);
-    ctx.setLineDash([24,20]);ctx.lineWidth=4;ctx.strokeStyle='#adb7cf';
-    ctx.strokeRect(track.x+35,track.y+35,track.w-70,track.h-70);ctx.setLineDash([]);
-  }
+  if(assetState.images.trackBg)ctx.drawImage(assetState.images.trackBg,0,0,canvas.width,canvas.height);
+  else ctx.drawImage(asphaltCanvas,0,0);
+  // Neon rails with dirty flicker
+  const flick=Math.max(0.1,0.5+0.3*Math.abs(Math.sin(tick*0.045))+(Math.random()<0.025?-0.35:0));
+  ctx.save();
+  ctx.lineWidth=3;
+  ctx.strokeStyle='rgba(255,41,117,'+flick.toFixed(3)+')';
+  ctx.shadowBlur=16;ctx.shadowColor='#ff2975';
+  ctx.strokeRect(track.x-46,track.y-46,track.w+92,track.h+92);
+  ctx.strokeStyle='rgba(40,233,255,'+(flick*0.85).toFixed(3)+')';
+  ctx.shadowColor='#28e9ff';
+  ctx.strokeRect(track.x+46,track.y+46,track.w-92,track.h-92);
+  ctx.restore();
+  // Animated centerline — dashes march around the circuit
+  ctx.save();
+  ctx.setLineDash([24,20]);ctx.lineDashOffset=-(tick*0.9)%44;
+  ctx.lineWidth=4;ctx.strokeStyle='rgba(217,217,232,0.6)';
+  ctx.strokeRect(track.x,track.y,track.w,track.h);
+  ctx.restore();
   // Start line
-  if (assetState.images.banner) {
-    ctx.drawImage(assetState.images.banner, track.x+26, track.y+220, 18, 130);
-  } else {
-    ctx.fillStyle='white';ctx.fillRect(track.x+26,track.y+220,18,130);
-  }
+  if(assetState.images.banner)ctx.drawImage(assetState.images.banner,track.x+26,track.y+220,18,130);
+  else drawCheckers(track.x+26,track.y+220,18,130,'#f2f2ee');
   // Finish indicator
-  if (assetState.images.banner) {
-    ctx.drawImage(assetState.images.banner, track.x+track.w-28, track.y+220, 10, 130);
-  } else {
-    ctx.fillStyle='#ffd16655';ctx.fillRect(track.x+track.w-28,track.y+220,10,130);
+  ctx.save();ctx.shadowBlur=12;ctx.shadowColor='#ffd300';
+  if(assetState.images.banner)ctx.drawImage(assetState.images.banner,track.x+track.w-28,track.y+220,10,130);
+  else drawCheckers(track.x+track.w-30,track.y+220,14,130,'#ffd300');
+  ctx.restore()
+}
+
+function drawGraffiti(){
+  ctx.save();
+  ctx.translate(track.x+track.w/2,track.y+track.h/2);
+  ctx.textAlign='center';
+  ctx.rotate(-0.14);
+  ctx.font='84px "Permanent Marker",cursive';
+  ctx.fillStyle='rgba(182,255,0,0.13)';
+  ctx.fillText('OCTANE',0,-30);
+  ctx.rotate(0.22);
+  ctx.font='44px "Permanent Marker",cursive';
+  ctx.fillStyle='rgba(255,41,117,0.16)';
+  ctx.fillText('NO BRAKES',10,46);
+  ctx.font='30px "Permanent Marker",cursive';
+  ctx.fillStyle='rgba(40,233,255,0.12)';
+  ctx.fillText('★ RIOT GP ★',-20,108);
+  ctx.restore()
+}
+
+// Ambient neon embers drifting up — keeps the lot alive even in the lobby.
+const embers=Array.from({length:36},()=>({x:Math.random()*960,y:Math.random()*720,s:0.2+Math.random()*0.5,r:1+Math.random()*2,hue:Math.random()<0.5?'#ff2975':'#28e9ff',ph:Math.random()*Math.PI*2}));
+function drawEmbers(){
+  for(const e of embers){
+    e.y-=e.s;e.x+=Math.sin(tick*0.02+e.ph)*0.3;
+    if(e.y<-4){e.y=canvas.height+4;e.x=Math.random()*canvas.width}
+    ctx.globalAlpha=0.25+0.2*Math.sin(tick*0.1+e.ph);
+    ctx.fillStyle=e.hue;ctx.fillRect(e.x,e.y,e.r,e.r)
+  }
+  ctx.globalAlpha=1
+}
+
+function drawSparks(){
+  ctx.save();
+  for(const p of sparks){
+    ctx.globalAlpha=p.life;ctx.strokeStyle=p.hue;ctx.lineWidth=1.6;
+    ctx.shadowBlur=8;ctx.shadowColor=p.hue;
+    ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x-p.vx*2,p.y-p.vy*2);ctx.stroke()
+  }
+  ctx.restore()
+}
+
+function drawScreenFX(){
+  ctx.drawImage(screenFxCanvas,0,0);
+  // Occasional horizontal glitch slice — pure CRT punk
+  if(Math.random()<0.018){
+    const gy=Math.random()*canvas.height,gh=8+Math.random()*26,off=(Math.random()-0.5)*34;
+    ctx.drawImage(canvas,0,gy,canvas.width,gh,off,gy,canvas.width,gh)
   }
 }
 
@@ -589,37 +806,56 @@ function drawBoostParticles(){
 }
 
 function drawBoostBar(){
-  const bW=180,bH=10,bX=canvas.width/2-90,bY=canvas.height-22;
-  const fill=boostCharge*bW;
-  const color=boostLocked?'#ff6b6b':boostCharge>0.5?'#36eaff':boostCharge>0.25?'#ffd166':'#ff6b6b';
-  ctx.fillStyle='#0b1120bb';ctx.fillRect(bX-2,bY-2,bW+4,bH+4);
+  const bW=200,bH=12,bX=canvas.width/2-100,bY=canvas.height-26;
+  const color=boostLocked?'#ff3355':boostCharge>0.5?'#28e9ff':boostCharge>0.25?'#ffd300':'#ff3355';
+  ctx.fillStyle='#000';ctx.fillRect(bX-4,bY-4,bW+8,bH+8);
+  ctx.fillStyle='#15151f';ctx.fillRect(bX-2,bY-2,bW+4,bH+4);
   ctx.fillStyle=color;
-  if(boostActive){ctx.shadowBlur=14;ctx.shadowColor=color}
-  ctx.fillRect(bX,bY,fill,bH);ctx.shadowBlur=0;
-  ctx.strokeStyle='#2a3f70';ctx.lineWidth=1;ctx.strokeRect(bX,bY,bW,bH);
-  ctx.fillStyle='#9cb1d8';ctx.font='10px Inter,system-ui,sans-serif';ctx.textAlign='right';ctx.fillText('BOOST',bX-6,bY+9);ctx.textAlign='left'
+  if(boostActive){ctx.shadowBlur=16;ctx.shadowColor=color}
+  ctx.fillRect(bX,bY,boostCharge*bW,bH);ctx.shadowBlur=0;
+  ctx.fillStyle='#000';
+  for(let i=1;i<10;i++)ctx.fillRect(bX+i*bW/10-1,bY,2,bH);
+  ctx.fillStyle='#f2f2ee';ctx.font='900 11px "Archivo Black",Inter,sans-serif';ctx.textAlign='right';ctx.fillText('NITRO',bX-10,bY+11);ctx.textAlign='left'
 }
 
 function drawCar(c,color,alpha=1,glow=false,isOpponent=false){
   ctx.save();ctx.globalAlpha=alpha;ctx.translate(c.x,c.y);ctx.rotate(c.a);
-  if(glow){ctx.shadowBlur=20;ctx.shadowColor=color}
   const img = isOpponent ? assetState.images.ghostCar : assetState.images.playerCar;
   if (img) {
+    if(glow){ctx.shadowBlur=20;ctx.shadowColor=color}
     ctx.drawImage(img, -14, -8, 28, 16);
   } else {
-    ctx.fillStyle=color;ctx.fillRect(-14,-8,28,16);
-    ctx.fillStyle='#0b0f17';ctx.fillRect(-7,-5,14,10);
+    // Neon underglow
+    ctx.save();ctx.shadowBlur=18;ctx.shadowColor=color;ctx.fillStyle=color;ctx.globalAlpha=alpha*0.35;
+    ctx.beginPath();ctx.ellipse(0,0,17,11,0,0,Math.PI*2);ctx.fill();ctx.restore();
+    if(glow){ctx.shadowBlur=22;ctx.shadowColor=color}
+    // Angular street-machine body
+    ctx.fillStyle=color;
+    ctx.beginPath();ctx.moveTo(-14,-8);ctx.lineTo(7,-8);ctx.lineTo(15,-3);ctx.lineTo(15,3);ctx.lineTo(7,8);ctx.lineTo(-14,8);ctx.closePath();ctx.fill();
+    ctx.shadowBlur=0;
+    ctx.fillStyle='#0a0a0f';ctx.fillRect(-4,-5,9,10);
+    ctx.fillStyle='rgba(255,255,255,0.55)';ctx.fillRect(-13,-1.2,26,2.4);
+    ctx.fillStyle='#ff3355';ctx.fillRect(-14,-7,2,4);ctx.fillRect(-14,3,2,4);
   }
   ctx.restore()
 }
 
 function render(){
-  drawTrack();drawSkids();drawBoostParticles();
-  if(ghost.visible)drawCar(ghost,'#36eaff',0.45,false,true);
-  drawCar(player,'#ff3fb4',1,boostActive,false);
-  drawBoostBar()
+  tick++;
+  ctx.fillStyle='#0a0a0d';ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.save();
+  if(shake>0.1)ctx.translate((Math.random()-0.5)*shake,(Math.random()-0.5)*shake);
+  shake*=0.86;
+  drawTrack();drawGraffiti();drawSkids();drawSparks();drawBoostParticles();
+  if(ghost.visible)drawCar(ghost,'#28e9ff',0.45,false,true);
+  drawCar(player,'#ff2975',1,boostActive,false);
+  ctx.restore();
+  drawEmbers();
+  drawBoostBar();
+  drawScreenFX()
 }
 
+buildAsphalt();buildScreenFx();
 (function loop(){updateGame();render();requestAnimationFrame(loop)})();
 
 // ─── Button handlers ─────────────────────────────────────────────────────────
