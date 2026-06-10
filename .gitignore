@@ -8,3 +8,7 @@ firebase-debug.log
 *.log
 .DS_Store
 Thumbs.db
+
+# Source asset packs — not committed (too large, raw review files)
+.local-source-packs/
+*.zip
