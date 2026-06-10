@@ -16,5 +16,5 @@ Thumbs.db
 # Local sprite extraction tooling and recovered source JPEGs (not committed)
 venv_rembg/
 *.jpeg.orig
-scripts/
+scripts/extract_sprites*.py
 assets/cars/*.jpeg
