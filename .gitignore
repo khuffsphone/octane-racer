@@ -8,3 +8,6 @@ firebase-debug.log
 *.log
 .DS_Store
 Thumbs.db
+
+# Local asset review dumps — never commit raw packs/ZIPs
+.local-source-packs/
