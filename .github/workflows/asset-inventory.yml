@@ -2,7 +2,10 @@
 # so the asset drop can be reviewed before anything is committed to the repo.
 # Safe to delete once asset integration is done.
 name: Asset inventory
-on: workflow_dispatch
+on:
+  push:
+    branches: [claude/game-polish-punk-16i5wo]
+    paths: ['.github/workflows/asset-inventory.yml']
 permissions:
   contents: read
 jobs:
