@@ -98,6 +98,34 @@ living at the edge the whole run.
   SHIFT`, `NEAR MISS`, `boostMeter`, `puddles`, `pickups`) — all present.
 - Credential scan and >25 MB file scan — clean.
 
+## Rebase After Asset Integration
+
+- AG branch inspected: `agent/ag-assets-integration-local` @ e3aba18 (2 commits:
+  sprite/UI integration + audit reconcile). Changes: asset loader with
+  procedural fallback, JPEG sprites for player/traffic cars, splash/menu
+  background images, solo-first sidebar with multiplayer demoted behind a
+  toggle, game-over stats panel (distance/time/top gear/near misses).
+- Rebase: clean, no conflicts. All six tuning changes verified present
+  post-rebase; AG's loader, stat counters (reset/increment/display), and UI
+  changes intact alongside them.
+- Visual changes that affect tuning: none mechanically. Road geometry
+  (ROAD_X 200 / ROAD_W 400), car hitboxes (32×64), near-miss window (<50 px),
+  gear table, and the whole update() loop are untouched by AG — sprites are
+  drawn into the same boxes the fallback rectangles used.
+- Tuning values: still valid; no constant changes needed in this pass.
+- Recommended manual playtest focus:
+  1. **Perceived hitbox fairness** — the JPEG sprites have no alpha channel,
+     so each car renders as a full 32×64 rectangle including baked-in
+     background pixels. If the painted car body looks narrower than the
+     rectangle, collisions and near-misses will feel wrong even though the
+     numbers are unchanged. If playtest confirms this, the fix is tighter
+     crops / alpha PNGs (pipeline in asset-ingestion-audit.md), not constant
+     changes.
+  2. Near-miss readability with sprite traffic at gear-3 closing speeds.
+  3. Menu/splash text contrast over the new background images.
+- Housekeeping noted for AG: `assets/ui/hud-frame.jpeg` (630 KB) is committed
+  but referenced nowhere in index.html — dead weight; drop it or wire it up.
+
 ## Still needs a human play test
 - Whether 45 s airdrops feel too generous on mobile (smaller dodging space).
 - Whether G3 lug at 380 ever surprises players who downshift hard while braking
