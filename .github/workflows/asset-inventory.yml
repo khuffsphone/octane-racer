@@ -1,0 +1,22 @@
+# Temporary helper: lists the contents of the "Neon Racer Assets" release zip
+# so the asset drop can be reviewed before anything is committed to the repo.
+# Safe to delete once asset integration is done.
+name: Asset inventory
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download Assets --repo "$GITHUB_REPOSITORY" --dir drop
+      - name: List archive contents
+        run: |
+          ls -la drop
+          for z in drop/*.zip; do
+            echo "===== INVENTORY: $z ====="
+            unzip -l "$z"
+          done
