@@ -5,7 +5,7 @@
     {
       "id": "player-slickback-coupe",
       "type": "car-sprite",
-      "path": "assets/cars/player-slickback-coupe.jpeg",
+      "path": "assets/cars/player-slickback-coupe.png",
       "description": "Player vehicle — top-down purple Slickback Coupe with neon underglow, gold trim, and dark racing stripes.",
       "license": "user-provided; project use approved by owner",
       "source": "User-provided Google Drive asset folder",
@@ -16,7 +16,7 @@
     {
       "id": "traffic-police-cruiser",
       "type": "car-sprite",
-      "path": "assets/cars/traffic-police-cruiser.jpeg",
+      "path": "assets/cars/traffic-police-cruiser.png",
       "description": "Traffic vehicle — top-down police cruiser with star emblem, blue/red light bar, and black/white livery.",
       "license": "user-provided; project use approved by owner",
       "source": "User-provided Google Drive asset folder",
@@ -27,7 +27,7 @@
     {
       "id": "traffic-junkyard-muscle",
       "type": "car-sprite",
-      "path": "assets/cars/traffic-junkyard-muscle.jpeg",
+      "path": "assets/cars/traffic-junkyard-muscle.png",
       "description": "Traffic vehicle — top-down rusty orange muscle car with exposed engine, roll cage, and oversized rear tires.",
       "license": "user-provided; project use approved by owner",
       "source": "User-provided Google Drive asset folder",
@@ -45,17 +45,7 @@
       "attribution": "AI-generated for Octane Racer project",
       "tags": ["ui", "background", "splash", "neon-city"],
       "status": "integrated"
-    },
-    {
-      "id": "hud-frame",
-      "type": "ui-overlay",
-      "path": "assets/ui/hud-frame.jpeg",
-      "description": "HUD frame overlay — neon cyan/magenta glass frame with gold trim, designed for gameplay overlay.",
-      "license": "user-provided; project use approved by owner",
-      "source": "User-provided Google Drive asset folder",
-      "attribution": "AI-generated for Octane Racer project",
-      "tags": ["ui", "hud", "frame", "overlay"],
-      "status": "approved"
+
     },
     {
       "id": "menu-garage-bg",
@@ -70,6 +60,7 @@
     }
   ],
   "deferred": [
+    {"id": "hud-frame", "reason": "Removed from active tree; unused"},
     {"id": "luxury-rival-sedan", "reason": "Good candidate for 3rd traffic variant, deferred to keep first integration small"},
     {"id": "armored-hauler", "reason": "Good heavy traffic variant, deferred for next pass"},
     {"id": "neon-lowrider", "reason": "4th car variant, deferred to avoid sprite overload"},
