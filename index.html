@@ -757,7 +757,7 @@ let player={
   invulnerable:0,spinAngle:0,
   wrongGearTimer:0,
   boostMeter:0,isBoosting:false,boostTimer:0,
-  playTime:0,nextGasDrain:30,nextGasSpawn:60,
+  playTime:0,nextGasDrain:30,nextGasSpawn:45,
   emergencyGasTimer:0,
   finished:false
 };
@@ -884,7 +884,7 @@ function initGame(){
     invulnerable:0,spinAngle:0,
     gear:1,wrongGearTimer:0,
     boostMeter:0,isBoosting:false,boostTimer:0,
-    playTime:0,nextGasDrain:30,nextGasSpawn:60,
+    playTime:0,nextGasDrain:30,nextGasSpawn:45,
     emergencyGasTimer:0,
     finished:false
   };
@@ -962,7 +962,9 @@ function update(dt){
   player.accel=currentGear.accel;
   let wrongGear=false;
 
-  if(player.invulnerable<=0){
+  // Driving stays live during spawn/crash grace — invulnerability shields
+  // collisions/puddles only, so respawn is never a 2s control freeze.
+  {
     if(player.isBoosting){
       player.boostTimer-=dt;
       player.speed=900;
@@ -984,9 +986,12 @@ function update(dt){
       if(player.speed>player.maxSpeed)player.speed-=500*dt;
 
       // Engine stress
+      // Lug thresholds sit below each gear's perfect-shift window (G1→G2 window
+      // is 200–300, G2→G3 is 400–500) so shifting on the prompt is never punished.
       if(player.speed>5){
         if(player.gear===1&&player.speed>=420)wrongGear=true;
-        else if(player.gear===2&&player.speed<=400){wrongGear=true;player.accel=50;}
+        else if(player.gear===2&&player.speed<=180){wrongGear=true;player.accel=50;}
+        else if(player.gear===3&&player.speed<=380){wrongGear=true;player.accel=50;}
       }else if(player.speed<=5&&player.gear>1&&(keys.ArrowUp||gpState.accel)){wrongGear=true;player.accel=50;}
     }
   }
@@ -1004,7 +1009,7 @@ function update(dt){
   cameraSpeed=player.speed;
 
   // Steering (keyboard + gamepad; rain reduces handling)
-  if(player.speed>0&&player.invulnerable<=0){
+  if(player.speed>0){
     const rainPenalty=1-(weather.intensity*0.45);
     const speedFactor=Math.max(0.5,1.3-(player.speed/1000));
     const steerAmt=Math.abs(gpState.steer)>DEADZONE?Math.abs(gpState.steer):1;
@@ -1033,7 +1038,7 @@ function update(dt){
 
   // Gas pickup spawn
   if(player.playTime>=player.nextGasSpawn){
-    player.nextGasSpawn+=60;
+    player.nextGasSpawn+=45;
     const laneW=ROAD_W/4;
     const lane=Math.floor(Math.random()*4);
     pickups.push({x:ROAD_X+(lane*laneW)+(laneW/2),y:-100,radius:12});
@@ -1088,7 +1093,7 @@ function update(dt){
       weather.drops.push({x:Math.random()*1200-200,y:-20,length:15+Math.random()*25,speed:800+Math.random()*500});
     }
     // Spawn puddles on road during rain
-    if(Math.random()<weather.intensity*0.015){
+    if(Math.random()<weather.intensity*0.008){
       const pWidth=15+Math.random()*20;
       const px=ROAD_X+pWidth+Math.random()*(ROAD_W-pWidth*2);
       puddles.push({x:px,y:-100,w:pWidth});
@@ -1162,7 +1167,7 @@ function update(dt){
     if(e.type==='traffic'){
       // Lane-switching AI
       if(e.switchTimer>0){e.switchTimer-=dt;}
-      else if(e.y<250&&Math.random()<difficulty*0.05){
+      else if(e.y<200&&Math.random()<difficulty*0.03){
         const dir=Math.random()>0.5?1:-1;
         if(e.lane+dir>=0&&e.lane+dir<=3){
           e.lane+=dir;e.switchTimer=2+Math.random()*4;
