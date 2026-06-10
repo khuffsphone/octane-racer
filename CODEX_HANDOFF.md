@@ -192,10 +192,100 @@ First pack limit:
 - 1 start/finish banner
 - 3 UI icons
 - 5 SFX
-
 Rules:
 - No unknown licenses.
 - No uncredited third-party assets.
 - No bulk ingestion.
 - No changes to multiplayer logic during asset scaffold phase.
 - Keep asset manifest updated before integration.
+
+---
+
+## Gameplay Restoration Phase 1
+
+**Date:** 2026-05-29  
+**Commit:** d9baf4f — "restore: revive original Octane arcade gameplay loop"  
+**Status:** Core vertical arcade loop restored
+
+### What changed
+
+The prototype's circular-track physics model (angle-steered vehicle, progress 0–1) was replaced with the original vertical arcade game loop extracted from `legacy/original/Octane_Street_Racer.html`.
+
+#### index.html — replaced game loop, preserved Firebase shell
+
+**Removed (prototype-specific):**
+- `track` oval rectangle object
+- Angle/velocity physics (`player.a`, `player.v`)
+- `boostCharge`/`boostLocked`/`BOOST_DRAIN`/`BOOST_REGEN` regen-based boost
+- `boostParticles`, `skidMarks`, drift system
+- `drawTrack()` oval renderer
+- Gamepad API polling (to be re-added Phase 2)
+- HUD div elements (`#hudSpeed`, `#hudBoost`, `#hudProgress`, `#hudState`)
+- Prototype `drawCar()` (angle-rotated rectangle)
+- `startLocalRaceOnce()` physics reset
+
+**Added (from original arcade baseline):**
+- Full splash → menu → game → game-over → high-scores screen flow
+- `gearStats[1..3]` with speed caps (250/450/700) and accel per gear
+- `keys.A`/`keys.Z` gear shifting with perfect-shift +500 bonus
+- Engine stress `wrongGearTimer` → spinout at 2s overrev
+- Vertical road `ROAD_X=200, ROAD_W=400`, scrolling lane markings, rumble strips
+- `spawnEntity()` traffic (up to 12, lane-snap, speed 80–300)
+- Lane-switching AI (switchTimer, smooth lerp, turn signal blink, tire smoke)
+- `handleCrash()` — AABB collision, invulnerable 2s, canvas shake, particles
+- Near-miss bonus (+500 score, +25 boostMeter, sfxNearMiss)
+- Boost meter (filled by near misses; Space at 100% → 3s at 900 px/s)
+- Boost blast (clears traffic for +1000 pts)
+- Fuel/lives system (3 lives, drain every 30s, crash costs 1 life)
+- `drawGasCan()` pickup — bounce animation, +1 life, +1000 score, spawn every 60s
+- Emergency gas auto-spawn (lives===1, 15s cooldown, different lane)
+- `floatingTexts[]` — upward float, flicker, configurable color
+- Canvas-drawn arcade HUD (score, timer, speed bar, gear notches, boost bar, gear indicator, fuel-can lives, engine stress bar/warning)
+- `triggerGameOver()` / `saveHighScore()` / `populateHighScores()` with top-5 local table
+- `initials-input` high-score entry
+
+**Preserved / updated Firebase:**
+- `isConfigured` guard — placeholders fail gracefully, solo works offline
+- Anonymous Auth, `signInAnonymously`
+- `createRoom()`, `joinRoom()`, `attachRoom()`
+- `toggleReady()`, `startMultiplayerRace()`
+- `scheduleCountdown()`, `syncCountdownUI()`  
+- `startLocalRaceOnce()` → now calls `startArcadeGame()` (restored arcade init)
+- `publishRaceState()` — updated to arcade fields: x, y, speed, distance, score, lives, gear, boostMeter, isBoosting, finished
+- `publishFinish()` — updated to use `player.score` as `finalScore`
+- Winner logic — score-based: higher `finalScore` wins; equal = 'tie'
+- `opponentStateUnsub` — cleared before replacement and on leave
+- `leaveRoom()` + `cleanupListeners()` — all listeners and timers cleared
+- Prototype-limitation disclaimer text preserved in sidebar
+
+### Firebase data model (updated)
+
+```
+rooms/{roomCode}/players/{playerId}
+  id, name, ready
+  x, y                   ← player canvas position on vertical road
+  speed                  ← pixels/second (arcade units)
+  distance               ← cumulative distance driven
+  score                  ← arcade score (speed² × time / 1500, multipliers)
+  lives                  ← fuel cans remaining (0–3)
+  gear                   ← current gear (1–3)
+  boostMeter             ← 0–100
+  isBoosting             ← boolean
+  finished               ← boolean (set on lives===0 or explicit finish)
+  finishedAtMs           ← timestamp
+  finalScore             ← player.score at finish
+  updatedAt              ← serverTimestamp
+```
+
+### Deferred to Phase 2
+
+- Weather / rain cycling and drops
+- Puddles + hydroplane crash
+- Birds and flocks
+- Scenery parallax trees
+- Mobile controls visual polish
+- Gamepad re-integration
+
+### Asset ingestion gate
+
+**Still paused.** User must visually approve the restored arcade gameplay before asset ingestion resumes.
