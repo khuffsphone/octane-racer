@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-<title>Octane Street Racer</title>
+<title>Octane Street Racer — Arcade</title>
+<meta name="description" content="Octane Street Racer: a vertical arcade racing game with gear shifting, boost, near-miss scoring, and weather hazards."/>
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 <style>
 /* ── Design tokens ─────────────────────────────────────────── */
@@ -93,22 +94,46 @@ button:disabled{filter:grayscale(.4) brightness(.7);cursor:not-allowed}
   display:flex;flex-direction:column;justify-content:center;align-items:center;
   background:rgba(0,0,0,0.88);z-index:10;border-radius:8px;
   font-family:'Press Start 2P',cursive;color:white;
+  background-size:cover;background-position:center;
 }
 .arcade-overlay.hidden{display:none!important}
 
 /* Splash */
-#splash-screen{}
+#splash-screen{background-image:url('assets/ui/title-splash-bg.jpeg');background-size:cover;background-position:center}
+#splash-screen .bounce-in{background:rgba(0,0,0,0.65);padding:40px 60px;border-radius:16px;border:2px solid rgba(54,234,255,0.3)}
 .splash-title-1{font-size:3.5rem;color:#36eaff;text-shadow:6px 6px #3182ce;letter-spacing:-2px;margin-bottom:12px}
-.splash-title-2{font-size:2.5rem;color:#ffd166;text-shadow:6px 6px #e53e3e;letter-spacing:-2px;margin-bottom:60px}
+.splash-title-2{font-size:2.5rem;color:#ffd166;text-shadow:6px 6px #e53e3e;letter-spacing:-2px;margin-bottom:12px}
+.splash-subtitle{font-size:.6rem;color:#ff3fb4;text-shadow:0 0 12px #ff3fb4;letter-spacing:.15em;margin-bottom:40px;text-transform:uppercase}
 .splash-prompt{font-size:.65rem;color:#9ca3af;animation:blink 1.2s step-end infinite;text-transform:uppercase}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
 @keyframes bounceIn{0%{transform:scale(0.1);opacity:0}60%{transform:scale(1.2);opacity:1}100%{transform:scale(1)}}
 .bounce-in{animation:bounceIn 0.9s cubic-bezier(0.28,0.84,0.42,1) both}
+@keyframes glowPulse{0%,100%{text-shadow:6px 6px #3182ce,0 0 30px #36eaff44}50%{text-shadow:6px 6px #3182ce,0 0 60px #36eaff88}}
 
 /* Menu */
-.menu-title-1{font-size:2.8rem;color:#36eaff;text-shadow:4px 4px #3182ce;margin-bottom:8px}
+#menu-screen{background-image:url('assets/ui/menu-garage-bg.jpeg');background-size:cover;background-position:center}
+#menu-screen>div{background:rgba(0,0,0,0.7);padding:36px 48px;border-radius:16px;border:2px solid rgba(54,234,255,0.2)}
+.menu-title-1{font-size:2.8rem;color:#36eaff;text-shadow:4px 4px #3182ce;margin-bottom:8px;animation:glowPulse 3s ease-in-out infinite}
 .menu-title-2{font-size:1.8rem;color:#ffd166;text-shadow:4px 4px #e53e3e;margin-bottom:32px}
 .menu-instructions{font-size:.5rem;color:#9ca3af;text-align:center;line-height:2.2;text-transform:uppercase;margin-top:24px;max-width:320px}
+
+/* Start Engine button special */
+.start-engine-btn{
+  background:linear-gradient(135deg,#e53e3e,#ff6b6b);color:white;
+  padding:16px 28px;border:4px solid #fff;cursor:pointer;
+  text-transform:uppercase;font-size:.9rem;margin:6px;
+  font-family:'Press Start 2P',cursive;
+  transition:transform .15s,box-shadow .3s;border-radius:0;height:auto;
+  box-shadow:0 0 20px rgba(229,62,62,0.5),0 4px 15px rgba(0,0,0,0.4);
+  animation:enginePulse 2s ease-in-out infinite;
+}
+.start-engine-btn:hover{transform:scale(1.08);box-shadow:0 0 40px rgba(229,62,62,0.8)}
+.start-engine-btn:active{transform:scale(0.95)}
+@keyframes enginePulse{0%,100%{box-shadow:0 0 20px rgba(229,62,62,0.5)}50%{box-shadow:0 0 35px rgba(229,62,62,0.8),0 0 60px rgba(255,107,107,0.3)}}
+
+/* Multiplayer section — demoted */
+.mp-section{display:none}
+.mp-toggle{cursor:pointer;color:var(--muted);font-size:.7rem;text-decoration:underline}
 
 /* Gameover */
 .go-title{font-size:2.2rem;color:#ff6b6b;margin-bottom:16px}
@@ -130,6 +155,12 @@ button:disabled{filter:grayscale(.4) brightness(.7);cursor:not-allowed}
 .hs-table th{padding:8px 4px;border-bottom:3px solid white;text-align:left}
 .hs-table td{padding:10px 4px}
 .hs-table .tr{text-align:right}
+
+/* Game over stats */
+.go-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px;font-size:.5rem;text-align:center}
+.go-stats div{padding:8px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:4px}
+.go-stats .stat-label{color:#9ca3af;display:block;margin-bottom:4px}
+.go-stats .stat-value{color:#ffd166;font-size:.65rem}
 
 /* Arcade buttons */
 .arc-btn{
@@ -172,29 +203,16 @@ button:disabled{filter:grayscale(.4) brightness(.7);cursor:not-allowed}
   <!-- ── SIDEBAR ───────────────────────────────────────────── -->
   <aside class="panel sidebar">
     <h1>Octane Street Racer</h1>
-    <div class="tiny">Arcade lobby + race-state sync prototype. Firebase is not authoritative netcode.</div>
-    <div class="pill"><span id="authDot" class="dot"></span><span id="authStatus">Auth pending…</span></div>
+    <div class="tiny">Solo arcade mode — vertical road racer with gear shifting, boost, and near-miss scoring.</div>
+
+    <section class="section">
+      <h2>🏁 Solo Arcade</h2>
+      <div class="row"><button id="soloBtn" style="width:100%;height:48px;font-size:1rem">▶ START ENGINE</button></div>
+      <div class="tiny" style="margin-top:8px">Full arcade loop. Race traffic, shift gears, boost past rivals.</div>
+    </section>
 
     <section class="section"><h2>Pilot</h2>
       <input id="nameInput" maxlength="20" placeholder="Driver name" value="Rookie"/>
-    </section>
-
-    <section class="section"><h2>Multiplayer Lobby</h2>
-      <div class="row" style="margin-bottom:8px"><button id="createBtn">Create Room</button></div>
-      <div class="row" style="margin-bottom:8px"><input id="joinCodeInput" maxlength="6" placeholder="Room code"/><button id="joinBtn" class="alt">Join</button></div>
-      <div class="row"><button id="readyBtn" class="ghost" disabled>Ready Up</button><button id="leaveBtn" class="ghost" disabled>Leave</button></div>
-      <div class="tiny" style="margin-top:8px">Room: <b id="roomCodeLabel">—</b></div>
-      <div class="tiny" style="margin-top:6px">Prototype limitation: clients publish their own race state and finish data. Useful for demos, not cheat-proof competitive play. Firebase is not authoritative.</div>
-    </section>
-
-    <section class="section"><h2>Drivers</h2>
-      <ul id="playersList" class="players"></ul>
-      <div id="lobbyMsg" class="tiny" style="margin-top:8px">No room joined. Use Solo mode or Create/Join a room.</div>
-    </section>
-
-    <section class="section"><h2>Solo Mode</h2>
-      <div class="row"><button id="soloBtn">▶ Start Solo Race</button></div>
-      <div class="tiny" style="margin-top:8px">Play without Firebase. Full arcade loop.</div>
     </section>
 
     <section class="section"><h2>Controls</h2>
@@ -212,6 +230,19 @@ button:disabled{filter:grayscale(.4) brightness(.7);cursor:not-allowed}
 
     <section class="section"><h2>Audio</h2>
       <button id="soundBtn" class="ghost">🔇 Sound Off</button>
+    </section>
+
+    <!-- Multiplayer section — demoted/hidden for solo-first -->
+    <div class="mp-toggle" onclick="document.getElementById('mp-lobby-section').classList.toggle('mp-section')">▸ Online Prototype (paused)</div>
+    <section id="mp-lobby-section" class="section mp-section">
+      <h2>Online Prototype</h2>
+      <div class="pill"><span id="authDot" class="dot"></span><span id="authStatus">Auth pending…</span></div>
+      <div class="row" style="margin-top:8px;margin-bottom:8px"><button id="createBtn">Create Room</button></div>
+      <div class="row" style="margin-bottom:8px"><input id="joinCodeInput" maxlength="6" placeholder="Room code"/><button id="joinBtn" class="alt">Join</button></div>
+      <div class="row"><button id="readyBtn" class="ghost" disabled>Ready Up</button><button id="leaveBtn" class="ghost" disabled>Leave</button></div>
+      <div class="tiny" style="margin-top:8px">Room: <b id="roomCodeLabel">—</b></div>
+      <ul id="playersList" class="players"></ul>
+      <div id="lobbyMsg" class="tiny" style="margin-top:8px">No room joined.</div>
     </section>
 
     <div id="gamepadStatus">Gamepad: not detected</div>
@@ -234,6 +265,7 @@ button:disabled{filter:grayscale(.4) brightness(.7);cursor:not-allowed}
       <div class="bounce-in" style="text-align:center">
         <div class="splash-title-1">OCTANE</div>
         <div class="splash-title-2">STREET RACER</div>
+        <div class="splash-subtitle">— Solo Arcade Edition —</div>
         <div class="splash-prompt">Click or press any key</div>
       </div>
     </div>
@@ -243,8 +275,8 @@ button:disabled{filter:grayscale(.4) brightness(.7);cursor:not-allowed}
       <div style="text-align:center">
         <div class="menu-title-1">OCTANE</div>
         <div class="menu-title-2">STREET RACER</div>
-        <button class="arc-btn" id="menuStartBtn">Start Engine</button>
-        <button class="arc-btn" id="menuHSBtn">High Scores</button>
+        <button class="start-engine-btn" id="menuStartBtn">⚡ Start Engine ⚡</button>
+        <button class="arc-btn grey" id="menuHSBtn" style="display:block;margin:12px auto 0">High Scores</button>
         <div class="menu-instructions">
           USE ARROW KEYS TO DRIVE<br>
           A AND Z TO SHIFT GEARS<br>
@@ -260,6 +292,12 @@ button:disabled{filter:grayscale(.4) brightness(.7);cursor:not-allowed}
     <div id="gameover-screen" class="arcade-overlay hidden">
       <div class="go-title">CRASHED OUT</div>
       <div class="go-score">Score: <span id="final-score">0</span></div>
+      <div class="go-stats" id="go-stats">
+        <div><span class="stat-label">DISTANCE</span><span class="stat-value" id="go-distance">0</span></div>
+        <div><span class="stat-label">TIME</span><span class="stat-value" id="go-time">0:00</span></div>
+        <div><span class="stat-label">TOP GEAR</span><span class="stat-value" id="go-topgear">1</span></div>
+        <div><span class="stat-label">NEAR MISSES</span><span class="stat-value" id="go-nearmiss">0</span></div>
+      </div>
       <div id="new-highscore-box" class="go-new-hs">
         <p>NEW HIGH SCORE!</p>
         <input type="text" id="initials-input" maxlength="3" placeholder="AAA"/>
@@ -337,6 +375,27 @@ const readyBtn=el('readyBtn'),leaveBtn=el('leaveBtn');
 const countdownText=el('countdownText');
 const canvas=el('gameCanvas'),ctx=canvas.getContext('2d');
 ctx.imageSmoothingEnabled=false;
+
+// ─── Asset loading with fallback ──────────────────────────────────────────────
+const assetManifest = {
+  playerCar: 'assets/cars/player-slickback-coupe.jpeg',
+  trafficCar1: 'assets/cars/traffic-police-cruiser.jpeg',
+  trafficCar2: 'assets/cars/traffic-junkyard-muscle.jpeg'
+};
+const loadedAssets = {};
+function loadAsset(key, src) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => { loadedAssets[key] = img; resolve(true); };
+    img.onerror = () => { console.warn(`Asset ${key} failed: ${src}`); resolve(false); };
+    img.src = src;
+  });
+}
+(async function loadAllAssets() {
+  await Promise.all(Object.entries(assetManifest).map(([k,v]) => loadAsset(k,v)));
+  console.log(`Assets loaded: ${Object.keys(loadedAssets).length}/${Object.keys(assetManifest).length}`);
+})();
+const trafficAssetKeys = ['trafficCar1','trafficCar2'];
 
 // ─── Canvas resize ─────────────────────────────────────────────────────────────
 function resizeCanvas(){
@@ -611,7 +670,7 @@ window.addEventListener('keydown',e=>{
         floatingTexts.push({text:'PERFECT SHIFT! +500',x:player.x+16,y:player.y+85,timer:1.5,color:'#00ffff'});
         sfxPerfectShift();
       }
-      player.gear++;sfxClick();
+      player.gear++;if(player.gear>topGearReached)topGearReached=player.gear;sfxClick();
     }
     if((e.code==='KeyZ')&&player.gear>1){
       const threshold=gearStats[player.gear-1].max;
@@ -663,6 +722,8 @@ let highScores=[
 ];
 
 const basePlayerConfig={name:'Racer',color:'#e53e3e'};
+let nearMissCount=0;
+let topGearReached=1;
 
 // ─── Game state ────────────────────────────────────────────────────────────────
 let gameState='splash'; // splash | menu | playing | gameover
@@ -703,38 +764,42 @@ let player={
 
 // ─── Drawing helpers ────────────────────────────────────────────────────────────
 
-function drawCar(x,y,width,height,color,isPlayer=false,spinAngle=0){
+function drawCar(x,y,width,height,color,isPlayer=false,spinAngle=0,assetKey=null){
   ctx.save();
   ctx.translate(x+width/2,y+height/2);
   if(isPlayer&&spinAngle>0)ctx.rotate(spinAngle);
   ctx.translate(-width/2,-height/2);
 
-  // Underglow
+  // Try sprite first
+  if(assetKey && loadedAssets[assetKey]){
+    ctx.drawImage(loadedAssets[assetKey], 0, 0, width, height);
+    // Underglow effect
+    ctx.shadowColor=isPlayer?'#e53e3e':color;
+    ctx.shadowBlur=isPlayer&&player.isBoosting?25:10;
+    ctx.strokeStyle=(isPlayer?'#e53e3e':color)+'44';
+    ctx.lineWidth=2;
+    ctx.strokeRect(-2,-2,width+4,height+4);
+    ctx.shadowBlur=0;
+    ctx.restore();
+    return;
+  }
+
+  // Procedural fallback
   ctx.shadowColor=color;
   ctx.shadowBlur=isPlayer&&player.isBoosting?20:8;
   ctx.fillStyle=color;
   ctx.fillRect(4,4,width-8,height-8);
   ctx.shadowBlur=0;
-
-  // Shadow
   ctx.fillStyle='rgba(0,0,0,0.5)';
   ctx.fillRect(4,4,width,height);
-
-  // Body
   ctx.fillStyle=color;
   ctx.fillRect(0,8,width,height-16);
   ctx.fillRect(4,0,width-8,height);
-
-  // Roof
   ctx.fillStyle='#111';
   ctx.fillRect(4,16,width-8,height-32);
-
-  // Windows
   ctx.fillStyle='#87cefa';
   ctx.fillRect(6,18,width-12,10);
   ctx.fillRect(6,height-28,width-12,10);
-
-  // Lights
   if(isPlayer){
     ctx.fillStyle='yellow';
     ctx.fillRect(4,2,6,4);
@@ -824,6 +889,7 @@ function initGame(){
     finished:false
   };
   entities=[];pickups=[];puddles=[];birds=[];particles=[];floatingTexts=[];
+  nearMissCount=0;topGearReached=1;
   scenery=[];
   weather={type:'clear',intensity:0,timer:12+Math.random()*8,drops:[]};
   bgOffsetY=0;cameraSpeed=0;timeSinceLastSpawn=0;
@@ -843,11 +909,13 @@ function spawnEntity(){
   for(let e of entities){
     if(Math.abs(e.y-y)<150&&Math.abs(e.x-x)<40)return;
   }
+  const assetKey=trafficAssetKeys[Math.floor(Math.random()*trafficAssetKeys.length)];
   entities.push({
     type:'traffic',lane,
     x,y,w:32,h:64,
     speed:80+Math.random()*220,
     color:`hsl(${Math.random()*360},70%,50%)`,
+    assetKey,
     switchTimer:1+Math.random()*3,
     passed:false
   });
@@ -1120,6 +1188,7 @@ function update(dt){
             player.boostMeter=Math.min(100,player.boostMeter+25);
             createParticles(player.x+16,player.y,'cyan',5);
             floatingTexts.push({text:'NEAR MISS!!! +500',x:player.x+16,y:player.y+85,timer:1.0,color:'yellow'});
+            nearMissCount++;
             sfxNearMiss();
           }
         }
@@ -1216,7 +1285,7 @@ function draw(){
 
   // Traffic entities
   entities.forEach(e=>{
-    drawCar(e.x,e.y,e.w,e.h,e.color,false,0);
+    drawCar(e.x,e.y,e.w,e.h,e.color,false,0,e.assetKey||null);
     // Turn signal blink when switching
     if(e.switchTimer>0&&e.switchTimer<0.5){
       ctx.fillStyle='yellow';
@@ -1245,7 +1314,7 @@ function draw(){
   // Player car
   if(gameState==='playing'||gameState==='gameover'){
     if(player.invulnerable<=0||Math.floor(Date.now()/100)%2===0){
-      drawCar(player.x,player.y,player.w,player.h,player.color,true,player.spinAngle);
+      drawCar(player.x,player.y,player.w,player.h,player.color,true,player.spinAngle,'playerCar');
       // Exhaust
       if(player.speed>100&&player.invulnerable<=0){
         ctx.fillStyle=player.isBoosting?'#00ffff':'rgba(255,255,255,0.5)';
@@ -1429,6 +1498,13 @@ function startGame(){
 function triggerGameOver(){
   gameState='gameover';
   el('final-score').textContent=Math.floor(player.score);
+  // Populate stats
+  el('go-distance').textContent=(player.distance/1000).toFixed(1)+' km';
+  const gm=Math.floor(player.playTime/60);
+  const gs=Math.floor(player.playTime%60);
+  el('go-time').textContent=`${gm}:${String(gs).padStart(2,'0')}`;
+  el('go-topgear').textContent=String(topGearReached);
+  el('go-nearmiss').textContent=String(nearMissCount);
   showScreen('gameover-screen');
 
   // Multiplayer result area — hide in solo
