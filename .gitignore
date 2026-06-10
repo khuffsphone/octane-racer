@@ -12,3 +12,9 @@ Thumbs.db
 # Local asset review dumps — never commit raw packs/ZIPs
 .local-source-packs/
 *.zip
+
+# Local sprite extraction tooling and recovered source JPEGs (not committed)
+venv_rembg/
+*.jpeg.orig
+scripts/
+assets/cars/*.jpeg
