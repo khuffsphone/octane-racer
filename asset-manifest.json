@@ -118,6 +118,96 @@
         "rival"
       ],
       "status": "integrated"
+    },
+    {
+      "id": "fxTurbo",
+      "type": "fx-sprite",
+      "path": "assets/fx/fxTurbo.png",
+      "description": "Blue turbo/boost flame (additive overlay). Manifest key fxTurbo.",
+      "license": "user-provided; project use approved by owner",
+      "source": "AI-generated via Google Flow, processed with tools/octane_assets.py (slice --glow)",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "fx",
+        "sprite",
+        "additive"
+      ],
+      "status": "integrated"
+    },
+    {
+      "id": "fxFire",
+      "type": "fx-sprite",
+      "path": "assets/fx/fxFire.png",
+      "description": "Orange fire burst (additive overlay). Manifest key fxFire.",
+      "license": "user-provided; project use approved by owner",
+      "source": "AI-generated via Google Flow, processed with tools/octane_assets.py (slice --glow)",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "fx",
+        "sprite",
+        "additive"
+      ],
+      "status": "integrated"
+    },
+    {
+      "id": "fxExplosion",
+      "type": "fx-sprite",
+      "path": "assets/fx/fxExplosion.png",
+      "description": "Explosion fireball (additive overlay). Manifest key fxExplosion.",
+      "license": "user-provided; project use approved by owner",
+      "source": "AI-generated via Google Flow, processed with tools/octane_assets.py (slice --glow)",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "fx",
+        "sprite",
+        "additive"
+      ],
+      "status": "integrated"
+    },
+    {
+      "id": "fxSmoke",
+      "type": "fx-sprite",
+      "path": "assets/fx/fxSmoke.png",
+      "description": "Grey smoke puff (additive overlay). Manifest key fxSmoke.",
+      "license": "user-provided; project use approved by owner",
+      "source": "AI-generated via Google Flow, processed with tools/octane_assets.py (slice --glow)",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "fx",
+        "sprite",
+        "additive"
+      ],
+      "status": "integrated"
+    },
+    {
+      "id": "fxNitro",
+      "type": "fx-sprite",
+      "path": "assets/fx/fxNitro.png",
+      "description": "Cyan nitro ring (additive overlay). Manifest key fxNitro.",
+      "license": "user-provided; project use approved by owner",
+      "source": "AI-generated via Google Flow, processed with tools/octane_assets.py (slice --glow)",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "fx",
+        "sprite",
+        "additive"
+      ],
+      "status": "integrated"
+    },
+    {
+      "id": "fxSparks",
+      "type": "fx-sprite",
+      "path": "assets/fx/fxSparks.png",
+      "description": "Yellow spark burst (additive overlay). Manifest key fxSparks.",
+      "license": "user-provided; project use approved by owner",
+      "source": "AI-generated via Google Flow, processed with tools/octane_assets.py (slice --glow)",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "fx",
+        "sprite",
+        "additive"
+      ],
+      "status": "integrated"
     }
   ],
   "deferred": [
