@@ -406,7 +406,9 @@ ctx.imageSmoothingEnabled=false;
 const assetManifest = {
   playerCar: 'assets/cars/player-slickback-coupe.png',
   trafficCar1: 'assets/cars/traffic-police-cruiser.png',
-  trafficCar2: 'assets/cars/traffic-junkyard-muscle.png'
+  trafficCar2: 'assets/cars/traffic-junkyard-muscle.png',
+  trafficCar4: 'assets/cars/traffic-pink-rival.png',
+  trafficCar3: 'assets/cars/traffic-purple-muscle.png'
 };
 const loadedAssets = {};
 function loadAsset(key, src) {
@@ -421,7 +423,7 @@ function loadAsset(key, src) {
   await Promise.all(Object.entries(assetManifest).map(([k,v]) => loadAsset(k,v)));
   console.log(`Assets loaded: ${Object.keys(loadedAssets).length}/${Object.keys(assetManifest).length}`);
 })();
-const trafficAssetKeys = ['trafficCar1','trafficCar2'];
+const trafficAssetKeys = ['trafficCar1','trafficCar2','trafficCar4','trafficCar3'];
 
 // ─── Canvas resize ─────────────────────────────────────────────────────────────
 function resizeCanvas(){

@@ -1,75 +1,164 @@
 {
   "version": "0.3.0",
-  "description": "Octane Street Racer asset manifest — tracks approved and integrated assets with license and status.",
+  "description": "Octane Street Racer asset manifest \u2014 tracks approved and integrated assets with license and status.",
   "assets": [
     {
       "id": "player-slickback-coupe",
       "type": "car-sprite",
       "path": "assets/cars/player-slickback-coupe.png",
-      "description": "Player vehicle — top-down purple Slickback Coupe with neon underglow, gold trim, and dark racing stripes.",
+      "description": "Player vehicle \u2014 top-down purple Slickback Coupe with neon underglow, gold trim, and dark racing stripes.",
       "license": "user-provided; project use approved by owner",
       "source": "User-provided Google Drive asset folder",
       "attribution": "AI-generated for Octane Racer project",
-      "tags": ["player", "car", "sprite", "top-down"],
+      "tags": [
+        "player",
+        "car",
+        "sprite",
+        "top-down"
+      ],
       "status": "integrated"
     },
     {
       "id": "traffic-police-cruiser",
       "type": "car-sprite",
       "path": "assets/cars/traffic-police-cruiser.png",
-      "description": "Traffic vehicle — top-down police cruiser with star emblem, blue/red light bar, and black/white livery.",
+      "description": "Traffic vehicle \u2014 top-down police cruiser with star emblem, blue/red light bar, and black/white livery.",
       "license": "user-provided; project use approved by owner",
       "source": "User-provided Google Drive asset folder",
       "attribution": "AI-generated for Octane Racer project",
-      "tags": ["traffic", "car", "sprite", "police", "top-down"],
+      "tags": [
+        "traffic",
+        "car",
+        "sprite",
+        "police",
+        "top-down"
+      ],
       "status": "integrated"
     },
     {
       "id": "traffic-junkyard-muscle",
       "type": "car-sprite",
       "path": "assets/cars/traffic-junkyard-muscle.png",
-      "description": "Traffic vehicle — top-down rusty orange muscle car with exposed engine, roll cage, and oversized rear tires.",
+      "description": "Traffic vehicle \u2014 top-down rusty orange muscle car with exposed engine, roll cage, and oversized rear tires.",
       "license": "user-provided; project use approved by owner",
       "source": "User-provided Google Drive asset folder",
       "attribution": "AI-generated for Octane Racer project",
-      "tags": ["traffic", "car", "sprite", "muscle", "top-down"],
+      "tags": [
+        "traffic",
+        "car",
+        "sprite",
+        "muscle",
+        "top-down"
+      ],
       "status": "integrated"
     },
     {
       "id": "title-splash-bg",
       "type": "ui-background",
       "path": "assets/ui/title-splash-bg.jpeg",
-      "description": "Splash/title screen background — neon city street scene with racing coupe, fire exhaust, and Underground Racing Garage sign.",
+      "description": "Splash/title screen background \u2014 neon city street scene with racing coupe, fire exhaust, and Underground Racing Garage sign.",
       "license": "user-provided; project use approved by owner",
       "source": "User-provided Google Drive asset folder",
       "attribution": "AI-generated for Octane Racer project",
-      "tags": ["ui", "background", "splash", "neon-city"],
+      "tags": [
+        "ui",
+        "background",
+        "splash",
+        "neon-city"
+      ],
       "status": "integrated"
-
     },
     {
       "id": "menu-garage-bg",
       "type": "ui-background",
       "path": "assets/ui/menu-garage-bg.jpeg",
-      "description": "Menu background — neon underground garage with four custom cars under colored lighting.",
+      "description": "Menu background \u2014 neon underground garage with four custom cars under colored lighting.",
       "license": "user-provided; project use approved by owner",
       "source": "User-provided Google Drive asset folder",
       "attribution": "AI-generated for Octane Racer project",
-      "tags": ["ui", "background", "menu", "garage"],
+      "tags": [
+        "ui",
+        "background",
+        "menu",
+        "garage"
+      ],
+      "status": "integrated"
+    },
+    {
+      "id": "traffic-purple-muscle",
+      "type": "car-sprite",
+      "path": "assets/cars/traffic-purple-muscle.png",
+      "description": "Traffic variant \u2014 top-down purple muscle car. Manifest key trafficCar3.",
+      "license": "user-provided; project use approved by owner",
+      "source": "AI-generated via Google Flow, processed with tools/octane_assets.py",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "traffic",
+        "car",
+        "sprite",
+        "top-down",
+        "purple"
+      ],
+      "status": "integrated"
+    },
+    {
+      "id": "traffic-pink-rival",
+      "type": "car-sprite",
+      "path": "assets/cars/traffic-pink-rival.png",
+      "description": "Traffic variant \u2014 top-down pink rival sports coupe. Manifest key trafficCar4.",
+      "license": "user-provided; project use approved by owner",
+      "source": "AI-generated via Google Flow, processed with tools/octane_assets.py",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "traffic",
+        "car",
+        "sprite",
+        "top-down",
+        "pink",
+        "rival"
+      ],
       "status": "integrated"
     }
   ],
   "deferred": [
-    {"id": "hud-frame", "reason": "Removed from active tree; unused"},
-    {"id": "luxury-rival-sedan", "reason": "Good candidate for 3rd traffic variant, deferred to keep first integration small"},
-    {"id": "armored-hauler", "reason": "Good heavy traffic variant, deferred for next pass"},
-    {"id": "neon-lowrider", "reason": "4th car variant, deferred to avoid sprite overload"},
-    {"id": "character-portraits-all", "reason": "Requires character select UI — not yet built"},
-    {"id": "garage-scene-variants", "reason": "Multiple garage backgrounds available, one integrated"},
-    {"id": "additional-title-splashes", "reason": "3 more variants available if current is unsatisfactory"}
+    {
+      "id": "hud-frame",
+      "reason": "Removed from active tree; unused"
+    },
+    {
+      "id": "luxury-rival-sedan",
+      "reason": "Good candidate for 3rd traffic variant, deferred to keep first integration small"
+    },
+    {
+      "id": "armored-hauler",
+      "reason": "Good heavy traffic variant, deferred for next pass"
+    },
+    {
+      "id": "neon-lowrider",
+      "reason": "4th car variant, deferred to avoid sprite overload"
+    },
+    {
+      "id": "character-portraits-all",
+      "reason": "Requires character select UI \u2014 not yet built"
+    },
+    {
+      "id": "garage-scene-variants",
+      "reason": "Multiple garage backgrounds available, one integrated"
+    },
+    {
+      "id": "additional-title-splashes",
+      "reason": "3 more variants available if current is unsatisfactory"
+    }
   ],
   "rejected": [
-    {"id": "video-files-all", "count": 16, "reason": "MP4 video files too large for static HTML game (3-8MB each)"},
-    {"id": "top-down-generic-sprite", "reason": "Create_a_top-down_orthographic_vehicle — generic, no clear project identity"}
+    {
+      "id": "video-files-all",
+      "count": 16,
+      "reason": "MP4 video files too large for static HTML game (3-8MB each)"
+    },
+    {
+      "id": "top-down-generic-sprite",
+      "reason": "Create_a_top-down_orthographic_vehicle \u2014 generic, no clear project identity"
+    }
   ]
 }

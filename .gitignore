@@ -18,3 +18,6 @@ venv_rembg/
 *.jpeg.orig
 scripts/extract_sprites*.py
 assets/cars/*.jpeg
+
+# Raw asset sheets (working input, not shipped)
+assets/incoming/
