@@ -18,3 +18,12 @@ venv_rembg/
 *.jpeg.orig
 scripts/extract_sprites*.py
 assets/cars/*.jpeg
+# Asset pipeline scratch
+raw/
+sprites/
+*.bak
+__pycache__/
+*.pyc
+
+# Local playtest build artifact (de-moduled, regenerable)
+octane-playtest.html
