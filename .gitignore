@@ -24,3 +24,6 @@ sprites/
 *.bak
 __pycache__/
 *.pyc
+
+# Local playtest build artifact (de-moduled, regenerable)
+octane-playtest.html
