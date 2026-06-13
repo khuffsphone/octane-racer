@@ -1,0 +1,37 @@
+[
+  {
+    "name": "player-coupe",
+    "_key": "magenta",
+    "prompt": "Top-down orthographic game sprite for a neon arcade racer. TRUE bird's-eye / satellite view, camera locked straight down at 90 degrees, flat, zero perspective, NOT 3/4. One car, centered, nose toward the TOP, filling ~85% of frame. Flat even lighting, crisp hard edges, subtle neon rim light. A sleek low sports coupe, glossy hot orange-red (#ff3300), cyan underglow, dark windshield, premium hero silhouette. Solid uniform magenta #FF00FF background, no gradient. NO shadow, ground, reflection, motion blur, text, logos, or brands. Square framing."
+  },
+  {
+    "name": "traffic-sedan",
+    "_key": "magenta",
+    "prompt": "Top-down orthographic game sprite for a neon arcade racer, TRUE bird's-eye view, camera straight down 90 degrees, flat, zero perspective. One car centered, nose to the TOP, fills ~85%. Flat even lighting, crisp hard edges, neon rim light. A boxy yellow (#ffff00) city sedan/taxi, thin black window strip, plain civilian look, silhouette clearly different from a sports car. Solid uniform magenta #FF00FF background. NO shadow/ground/reflection/motion blur/text/logo/brand. Square framing."
+  },
+  {
+    "name": "traffic-muscle",
+    "_key": "green",
+    "prompt": "Top-down orthographic game sprite for a neon arcade racer, TRUE bird's-eye view, camera straight down 90 degrees, flat, zero perspective. One car centered, nose to the TOP, fills ~85%. Flat even lighting, crisp hard edges, neon rim light. A chunky purple (#8a2be2) muscle car/SUV, wide aggressive stance, bulky silhouette, distinct from sedan and coupe. Solid uniform GREEN #00FF00 background (keeps purple edges keyable), no gradient. NO shadow/ground/reflection/motion blur/text/logo/brand. Square framing."
+  },
+  {
+    "name": "traffic-van",
+    "_key": "magenta",
+    "prompt": "Top-down orthographic game sprite for a neon arcade racer, TRUE bird's-eye view, camera straight down 90 degrees, flat, zero perspective. One vehicle centered, nose to the TOP, fills ~85%. A tall boxy delivery van, clean white/light-grey body (#e8f1ff), slightly longer than a car, blunt front, obviously a different tall silhouette so it reads as traffic. Solid uniform magenta #FF00FF background. NO shadow/ground/reflection/motion blur/text/logo/brand. Square framing."
+  },
+  {
+    "name": "traffic-hatch",
+    "_key": "magenta",
+    "prompt": "Top-down orthographic game sprite for a neon arcade racer, TRUE bird's-eye view, camera straight down 90 degrees, flat, zero perspective. One car centered, nose to the TOP, fills ~85%. A small rounded compact hatchback, electric cyan body (#36eaff), short stubby silhouette, friendly civilian look, clearly smaller than the other cars. Solid uniform magenta #FF00FF background. NO shadow/ground/reflection/motion blur/text/logo/brand. Square framing."
+  },
+  {
+    "name": "traffic-rival",
+    "_key": "magenta",
+    "prompt": "Top-down orthographic game sprite for a neon arcade racer, TRUE bird's-eye view, camera straight down 90 degrees, flat, zero perspective. One car centered, nose to the TOP, fills ~85%. A second sleek sports coupe (rival), vivid pink-magenta body (#ff3fb4), low aggressive stance, same fast-car class as the player but a clearly different color so it never reads as the player car. Solid uniform magenta #FF00FF background. NO shadow/ground/reflection/motion blur/text/logo/brand. Square framing."
+  },
+  {
+    "name": "pickup-gas",
+    "_key": "magenta",
+    "prompt": "Top-down orthographic game sprite for a neon arcade racer, bird's-eye view, flat, zero perspective. A chunky retro jerry-can fuel pickup, glowing neon green (#00ff66), small spout, iconic readable shape, soft green glow, centered, fills ~70% of frame. Solid uniform magenta #FF00FF background. NO shadow/ground/reflection/text/logo. Square framing."
+  }
+]

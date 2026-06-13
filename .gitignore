@@ -22,3 +22,11 @@ assets/cars/*.jpeg
 # Generated standalone playtest builds (base64-inlined; not source)
 octane-playtest.html
 *-playtest.html
+# Asset pipeline scratch
+raw/
+sprites/
+*.bak
+__pycache__/
+*.pyc
+
+# Local playtest build artifact (de-moduled, regenerable)
