@@ -421,7 +421,11 @@ const assetManifest = {
   trafficCar4: 'assets/cars/traffic-pink-rival.png',
   trafficCar3: 'assets/cars/traffic-purple-muscle.png',
   decalSkid: 'assets/decals/decalSkid.png',
-  decalOil: 'assets/decals/decalOil.png'
+  decalOil: 'assets/decals/decalOil.png',
+  ped1: 'assets/peds/ped1.png',
+  ped2: 'assets/peds/ped2.png',
+  ped3: 'assets/peds/ped3.png',
+  ped4: 'assets/peds/ped4.png'
 };
 const loadedAssets = {};
 function loadAsset(key, src) {
@@ -1055,10 +1059,95 @@ function drawObstacle(x,y,w,h){
   ctx.restore();
 }
 
+// ─── Phase 4: crossing pedestrians (collide like traffic) ─────────────────────
+let peds=[];
+let pedTimer=5;
+const PED_KEYS=['ped1','ped2','ped3','ped4'];
+function spawnPed(){
+  const fromLeft=Math.random()<0.5;
+  const key=PED_KEYS[Math.floor(Math.random()*PED_KEYS.length)];
+  peds.push({
+    x:fromLeft?ROAD_X-30:ROAD_X+ROAD_W+30, y:-40,
+    vx:(fromLeft?1:-1)*(40+Math.random()*30),  // walk across the lanes
+    w:24,h:40,key,bob:Math.random()*Math.PI*2,hit:false
+  });
+}
+function updatePeds(dt){
+  for(let i=peds.length-1;i>=0;i--){
+    const p=peds[i];
+    p.x+=p.vx*dt;
+    p.y+=cameraSpeed*dt*0.6;        // drift down with the road a little
+    p.bob+=dt*9;                     // leg-bob animation phase
+    // collision → reuse the crash path (same as obstacles)
+    if(!p.hit&&player.invulnerable<=0&&player.x<p.x+p.w&&player.x+player.w>p.x&&player.y<p.y+p.h&&player.y+player.h>p.y){
+      p.hit=true;handleCrash(false);
+    }
+    if(p.x<ROAD_X-70||p.x>ROAD_X+ROAD_W+70||p.y>660)peds.splice(i,1);
+  }
+}
+function drawPed(p){
+  const rock=Math.sin(p.bob)*0.12;
+  ctx.save();ctx.translate(p.x+p.w/2,p.y+p.h/2);ctx.rotate(rock);
+  const img=loadedAssets[p.key];
+  if(img){ctx.drawImage(img,-p.w/2-4,-p.h/2-12,p.w+8,p.h+24);}  // sprite (64×128 → fit)
+  else{                                                          // capsule fallback
+    ctx.fillStyle='#e8d2b0';ctx.beginPath();ctx.arc(0,-p.h/2+6,5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#3a64c8';ctx.fillRect(-5,-p.h/2+10,10,p.h-14);
+    ctx.strokeStyle='#222';ctx.lineWidth=3;
+    const ls=Math.sin(p.bob)*4;
+    ctx.beginPath();ctx.moveTo(-3,p.h/2-6);ctx.lineTo(-3+ls,p.h/2);ctx.moveTo(3,p.h/2-6);ctx.lineTo(3-ls,p.h/2);ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ─── Phase 4: parallax roadside props (cosmetic, slower scroll, NO collision) ──
+// Procedural (the scenery sheet's art had baked-in magenta rims); sprite-override
+// supported via propPalm/propLamp/propSign keys if clean art is added later.
+let props=[];
+let propTimer=1.5;
+function spawnProp(){
+  const types=['palm','lamp','sign'];
+  const t=types[Math.floor(Math.random()*types.length)];
+  const left=Math.random()<0.5;
+  const margin=left?(20+Math.random()*(ROAD_X-60)):(ROAD_X+ROAD_W+30+Math.random()*(800-ROAD_X-ROAD_W-60));
+  props.push({type:t,x:margin,y:-80,par:0.55+Math.random()*0.15,scale:0.8+Math.random()*0.5});
+}
+function updateProps(dt){
+  for(let i=props.length-1;i>=0;i--){
+    const p=props[i];p.y+=cameraSpeed*p.par*dt;   // slower than road → depth
+    if(p.y>700)props.splice(i,1);
+  }
+}
+function drawProps(){
+  for(const p of props){
+    const key='prop'+p.type.charAt(0).toUpperCase()+p.type.slice(1);
+    const img=loadedAssets[key];
+    ctx.save();ctx.translate(p.x,p.y);ctx.scale(p.scale,p.scale);
+    if(img){ctx.drawImage(img,-24,-48,48,96);}else drawPropPrimitive(p.type);
+    ctx.restore();
+  }
+}
+function drawPropPrimitive(t){
+  if(t==='palm'){
+    ctx.fillStyle='#6b4a2b';ctx.fillRect(-3,-6,6,34);
+    ctx.fillStyle='#2e8b57';for(let a=0;a<6;a++){ctx.save();ctx.rotate(a/6*Math.PI*2);ctx.beginPath();ctx.ellipse(0,-16,7,18,0,0,Math.PI*2);ctx.fill();ctx.restore();}
+  }else if(t==='lamp'){
+    ctx.fillStyle='#3a3f4a';ctx.fillRect(-2,-10,4,38);ctx.fillRect(-2,-12,18,4);
+    ctx.fillStyle='#ffd36655';ctx.beginPath();ctx.arc(16,-10,6,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#ffd366';ctx.beginPath();ctx.arc(16,-10,3,0,Math.PI*2);ctx.fill();
+  }else{ // sign / billboard
+    ctx.fillStyle='#2b2f3a';ctx.fillRect(-2,0,4,28);
+    ctx.fillStyle='#1d2740';ctx.fillRect(-16,-20,32,22);
+    ctx.fillStyle='#36eaff';ctx.fillRect(-13,-17,26,16);
+    ctx.fillStyle='#0d1730';ctx.fillRect(-10,-14,20,10);
+  }
+}
+
 // ─── Init / Reset ─────────────────────────────────────────────────────────────
 function initGame(){
   player=freshPlayer();
   entities=[];pickups=[];puddles=[];birds=[];particles=[];floatingTexts=[];fxList=[];decals=[];obstacleTimer=4;
+  peds=[];props=[];pedTimer=6;propTimer=1.5;
   nearMissCount=0;topGearReached=1;
   scenery=[];
   // §5.5 weather machine: sunny45 → warning5 → rain30 → clearing10 (90s loop).
@@ -1343,6 +1432,13 @@ function update(dt){
     if(lane>=0)entities.push({type:'obstacle',lane,x:laneCenter(lane)-22,y:-90,w:44,h:30,speed:0,passed:true});
   }
 
+  // Phase 4: sparse crossing pedestrians + parallax roadside props
+  pedTimer-=dt;
+  if(pedTimer<=0){pedTimer=6+Math.random()*5;spawnPed();}
+  updatePeds(dt);
+  if(!reduceMotion){propTimer-=dt;if(propTimer<=0){propTimer=1.2+Math.random()*1.5;spawnProp();}}
+  updateProps(dt);
+
   // ── Update entities (lane-switch AI cadence per §5.4) ─────────────────────────
   const difficulty=Math.min(1.0,player.score/12000);
   for(let i=entities.length-1;i>=0;i--){
@@ -1433,6 +1529,9 @@ function draw(){
     }
   });
 
+  // Phase 4: parallax roadside props (in the grass margins, behind the road)
+  drawProps();
+
   // Road
   ctx.fillStyle='#333';
   ctx.fillRect(ROAD_X,0,ROAD_W,600);
@@ -1486,6 +1585,9 @@ function draw(){
       }
     }
   });
+
+  // Phase 4: crossing pedestrians (road level, with traffic)
+  peds.forEach(drawPed);
 
   // Particles
   particles.forEach(p=>{

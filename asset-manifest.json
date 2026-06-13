@@ -227,6 +227,62 @@
         "cosmetic"
       ],
       "status": "integrated"
+    },
+    {
+      "id": "ped1",
+      "type": "ped-sprite",
+      "path": "assets/peds/ped1.png",
+      "description": "Runner pedestrian (crossing entity). Roadside scenery is procedural.",
+      "license": "user-provided; project use approved by owner",
+      "source": "AI-generated via Google Flow, sliced with octane_assets.py",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "pedestrian",
+        "sprite"
+      ],
+      "status": "integrated"
+    },
+    {
+      "id": "ped2",
+      "type": "ped-sprite",
+      "path": "assets/peds/ped2.png",
+      "description": "Flag-marshal pedestrian (crossing entity). Roadside scenery is procedural.",
+      "license": "user-provided; project use approved by owner",
+      "source": "AI-generated via Google Flow, sliced with octane_assets.py",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "pedestrian",
+        "sprite"
+      ],
+      "status": "integrated"
+    },
+    {
+      "id": "ped3",
+      "type": "ped-sprite",
+      "path": "assets/peds/ped3.png",
+      "description": "Trash-thrower pedestrian (crossing entity). Roadside scenery is procedural.",
+      "license": "user-provided; project use approved by owner",
+      "source": "AI-generated via Google Flow, sliced with octane_assets.py",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "pedestrian",
+        "sprite"
+      ],
+      "status": "integrated"
+    },
+    {
+      "id": "ped4",
+      "type": "ped-sprite",
+      "path": "assets/peds/ped4.png",
+      "description": "Cheering pedestrian (crossing entity). Roadside scenery is procedural.",
+      "license": "user-provided; project use approved by owner",
+      "source": "AI-generated via Google Flow, sliced with octane_assets.py",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "pedestrian",
+        "sprite"
+      ],
+      "status": "integrated"
     }
   ],
   "deferred": [
