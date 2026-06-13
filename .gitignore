@@ -30,3 +30,6 @@ __pycache__/
 *.pyc
 
 # Local playtest build artifact (de-moduled, regenerable)
+
+# Raw asset sheets (working input, not shipped)
+assets/incoming/
