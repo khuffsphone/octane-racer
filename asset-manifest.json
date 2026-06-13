@@ -197,6 +197,36 @@
         "additive"
       ],
       "status": "integrated"
+    },
+    {
+      "id": "decalSkid",
+      "type": "decal-sprite",
+      "path": "assets/decals/decalSkid.png",
+      "description": "Tyre skid marks (road decal, normal alpha). Scorch/debris are procedural fallbacks.",
+      "license": "user-provided; project use approved by owner",
+      "source": "AI-generated via Google Flow, sliced with octane_assets.py",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "decal",
+        "road",
+        "cosmetic"
+      ],
+      "status": "integrated"
+    },
+    {
+      "id": "decalOil",
+      "type": "decal-sprite",
+      "path": "assets/decals/decalOil.png",
+      "description": "Oil pool (road decal, normal alpha). Scorch/debris are procedural fallbacks.",
+      "license": "user-provided; project use approved by owner",
+      "source": "AI-generated via Google Flow, sliced with octane_assets.py",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "decal",
+        "road",
+        "cosmetic"
+      ],
+      "status": "integrated"
     }
   ],
   "deferred": [

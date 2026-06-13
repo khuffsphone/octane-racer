@@ -419,7 +419,9 @@ const assetManifest = {
   fxSparks: 'assets/fx/fxSparks.png',
   fxTurbo: 'assets/fx/fxTurbo.png',
   trafficCar4: 'assets/cars/traffic-pink-rival.png',
-  trafficCar3: 'assets/cars/traffic-purple-muscle.png'
+  trafficCar3: 'assets/cars/traffic-purple-muscle.png',
+  decalSkid: 'assets/decals/decalSkid.png',
+  decalOil: 'assets/decals/decalOil.png'
 };
 const loadedAssets = {};
 function loadAsset(key, src) {
@@ -832,6 +834,7 @@ let weather={type:'clear',intensity:0,timer:12,drops:[]};
 let bgOffsetY=0;
 let cameraSpeed=0;
 let timeSinceLastSpawn=0;
+let obstacleTimer=4;   // Phase 3: sparse obstacle cadence
 // loneCarTimer removed — spacing handled by spawnEntity() density check
 
 // Ghost for multiplayer opponent
@@ -996,10 +999,66 @@ function drawFXLayer(){
   ctx.restore();ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
 }
 
+// ─── Phase 3: road decals (cosmetic, NORMAL alpha, drawn UNDER cars) ───────────
+// Sprite if the matching decalX is loaded, else a procedural dark mark. Never collides.
+let decals=[];
+function spawnDecal(type,x,y,opts={}){
+  const d={type,x,y,life:0,dur:opts.dur||1.5,size:opts.size||34,
+    rot:opts.rot!==undefined?opts.rot:Math.random()*Math.PI*2,alpha:opts.alpha||0.55};
+  if(type==='scorch'){d.r=[];for(let i=0;i<12;i++)d.r.push(0.7+Math.random()*0.5);}
+  if(type==='debris'){d.pts=[];for(let i=0;i<8;i++)d.pts.push([Math.random()*Math.PI*2,Math.random()]);}
+  decals.push(d);if(decals.length>80)decals.splice(0,20);
+}
+function updateDecals(dt){
+  for(let i=decals.length-1;i>=0;i--){
+    const d=decals[i];d.life+=dt;d.y+=cameraSpeed*dt;       // scroll with the road
+    if(d.life>=d.dur||d.y>640)decals.splice(i,1);
+  }
+}
+function drawDecalLayer(){
+  for(const d of decals){
+    const fade=Math.max(0,1-d.life/d.dur)*d.alpha;
+    if(fade<=0)continue;
+    ctx.save();ctx.globalAlpha=fade;ctx.translate(d.x,d.y);ctx.rotate(d.rot);
+    const key='decal'+d.type.charAt(0).toUpperCase()+d.type.slice(1);
+    const img=loadedAssets[key];
+    if(img){const s=d.size;ctx.drawImage(img,-s/2,-s,s,s*2);}   // sprite (64×128)
+    else drawDecalPrimitive(d);                                  // procedural fallback
+    ctx.restore();
+  }
+  ctx.globalAlpha=1;
+}
+function drawDecalPrimitive(d){
+  const s=d.size;
+  if(d.type==='skid'){
+    ctx.strokeStyle='rgba(12,12,16,1)';ctx.lineWidth=4;ctx.lineCap='round';
+    for(const dx of[-5,5]){ctx.beginPath();ctx.moveTo(dx,-s);ctx.quadraticCurveTo(dx*1.6,0,dx,s);ctx.stroke();}
+  }else if(d.type==='oil'){
+    ctx.fillStyle='rgba(8,8,12,1)';ctx.beginPath();ctx.ellipse(0,0,s*0.6,s*0.42,0,0,Math.PI*2);ctx.fill();
+  }else if(d.type==='scorch'){
+    ctx.fillStyle='rgba(22,18,16,1)';ctx.beginPath();
+    d.r.forEach((rr,i)=>{const a=i/d.r.length*Math.PI*2,r=s*0.5*rr;ctx[i?'lineTo':'moveTo'](Math.cos(a)*r,Math.sin(a)*r);});
+    ctx.closePath();ctx.fill();
+  }else if(d.type==='debris'){
+    ctx.fillStyle='rgba(44,44,50,1)';
+    d.pts.forEach(([a,rr])=>{const r=rr*s*0.5;ctx.fillRect(Math.cos(a)*r,Math.sin(a)*r,3,3);});
+  }
+}
+
+// ─── Phase 3: obstacles (collide like traffic; procedural striped barrier) ─────
+function drawObstacle(x,y,w,h){
+  ctx.save();ctx.translate(x,y);
+  ctx.fillStyle='#15151c';ctx.fillRect(0,0,w,h);
+  ctx.fillStyle='#ffae00';
+  for(let i=-h;i<w;i+=14){ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i+7,0);ctx.lineTo(i+7-h,h);ctx.lineTo(i-h,h);ctx.closePath();ctx.fill();}
+  ctx.fillStyle='#0a0a0f';ctx.fillRect(0,0,w,4);ctx.fillRect(0,h-4,w,4);
+  ctx.restore();
+}
+
 // ─── Init / Reset ─────────────────────────────────────────────────────────────
 function initGame(){
   player=freshPlayer();
-  entities=[];pickups=[];puddles=[];birds=[];particles=[];floatingTexts=[];
+  entities=[];pickups=[];puddles=[];birds=[];particles=[];floatingTexts=[];fxList=[];decals=[];obstacleTimer=4;
   nearMissCount=0;topGearReached=1;
   scenery=[];
   // §5.5 weather machine: sunny45 → warning5 → rain30 → clearing10 (90s loop).
@@ -1068,6 +1127,10 @@ function handleCrash(isSpinout=false){
     floatingTexts.push({text:'CRASH! -20 FUEL',x:player.x+16,y:player.y-20,timer:1.5,color:'#ff6b6b'});
     spawnFX('fxExplosion',player.x+16,player.y+24,{dur:0.45,size:46,grow:46});
   }
+  // Phase 3: stamp lasting marks at the impact point (cosmetic, scrolls + fades)
+  spawnDecal('scorch',player.x+16,player.y+24,{size:44,dur:2.0,alpha:0.7});
+  spawnDecal('oil',player.x+16,player.y+34,{size:30,dur:2.0,alpha:0.6});
+  spawnDecal('debris',player.x+16,player.y+24,{size:40,dur:2.0,alpha:0.7});
   // Screen shake (skipped under prefers-reduced-motion)
   if(!reduceMotion){
     canvas.style.transform='translate(5px,5px)';
@@ -1128,6 +1191,11 @@ function update(dt){
   else player.speed-=14*dt;
   if(player.speed>player.maxSpeed)player.speed-=60*dt; // soft cap at gear top speed
   player.speed=Math.max(0,player.speed);
+
+  // Phase 3: lay skid marks under hard braking at speed (cosmetic decal)
+  if(brakeKey&&player.speed>45&&player.spinLock<=0&&Math.random()<0.6){
+    spawnDecal('skid',player.x+player.w/2,player.y+player.h-6,{rot:0,size:26,dur:1.5,alpha:0.5});
+  }
 
   // §5.1 Overheat: holding redline (≥ gear top speed) >1.2s → forced 50 MPH, −15% fuel.
   if(!player.nitroActive&&player.speed>=gearStats[player.gear].max-0.5){
@@ -1267,6 +1335,14 @@ function update(dt){
   timeSinceLastSpawn+=dt;
   if(timeSinceLastSpawn>=spawnInterval(player.score)){timeSinceLastSpawn=0;spawnEntity();}
 
+  // Phase 3: sparse static obstacles (collide like traffic) in an open lane
+  obstacleTimer-=dt;
+  if(obstacleTimer<=0){
+    obstacleTimer=7+Math.random()*5;
+    const lane=pickSpawnLane();
+    if(lane>=0)entities.push({type:'obstacle',lane,x:laneCenter(lane)-22,y:-90,w:44,h:30,speed:0,passed:true});
+  }
+
   // ── Update entities (lane-switch AI cadence per §5.4) ─────────────────────────
   const difficulty=Math.min(1.0,player.score/12000);
   for(let i=entities.length-1;i>=0;i--){
@@ -1337,6 +1413,7 @@ function update(dt){
     if(p.life<=0)particles.splice(i,1);
   }
   updateFX(dt);
+  updateDecals(dt);
 
   // Multiplayer publish
   if(roomCode&&Date.now()-lastPublish>180){publishRaceState();lastPublish=Date.now();}
@@ -1377,6 +1454,9 @@ function draw(){
     ctx.fillRect(ROAD_X+ROAD_W*0.75-2,y,4,50);
   }
 
+  // Phase 3: road decals (skid/scorch/oil/debris) — under cars, on the asphalt
+  drawDecalLayer();
+
   // Phase 2: Puddles (on road surface, under cars)
   puddles.forEach(p=>drawPuddle(p.x,p.y,p.w));
 
@@ -1395,6 +1475,7 @@ function draw(){
 
   // Traffic entities
   entities.forEach(e=>{
+    if(e.type==='obstacle'){drawObstacle(e.x,e.y,e.w,e.h);return;}
     drawCar(e.x,e.y,e.w,e.h,e.color,false,0,e.assetKey||null);
     // Turn signal blink when switching
     if(e.switchTimer>0&&e.switchTimer<0.5){
