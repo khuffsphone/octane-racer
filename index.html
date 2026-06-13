@@ -411,7 +411,15 @@ ctx.imageSmoothingEnabled=false;
 const assetManifest = {
   playerCar: 'assets/cars/player-slickback-coupe.png',
   trafficCar1: 'assets/cars/traffic-police-cruiser.png',
-  trafficCar2: 'assets/cars/traffic-junkyard-muscle.png'
+  trafficCar2: 'assets/cars/traffic-junkyard-muscle.png',
+  fxExplosion: 'assets/fx/fxExplosion.png',
+  fxFire: 'assets/fx/fxFire.png',
+  fxNitro: 'assets/fx/fxNitro.png',
+  fxSmoke: 'assets/fx/fxSmoke.png',
+  fxSparks: 'assets/fx/fxSparks.png',
+  fxTurbo: 'assets/fx/fxTurbo.png',
+  trafficCar4: 'assets/cars/traffic-pink-rival.png',
+  trafficCar3: 'assets/cars/traffic-purple-muscle.png'
 };
 const loadedAssets = {};
 function loadAsset(key, src) {
@@ -426,7 +434,7 @@ function loadAsset(key, src) {
   await Promise.all(Object.entries(assetManifest).map(([k,v]) => loadAsset(k,v)));
   console.log(`Assets loaded: ${Object.keys(loadedAssets).length}/${Object.keys(assetManifest).length}`);
 })();
-const trafficAssetKeys = ['trafficCar1','trafficCar2'];
+const trafficAssetKeys = ['trafficCar1','trafficCar2','trafficCar4','trafficCar3'];
 
 // ─── Canvas resize ─────────────────────────────────────────────────────────────
 function resizeCanvas(){
@@ -958,6 +966,36 @@ function createParticles(x,y,color,count){
   }
 }
 
+// ─── FX overlay layer (additive sprites; no-ops cleanly if a sprite is absent) ─
+// Animates ONE sprite via scale/alpha/rotate (no frame sheets). Gated on sprite presence,
+// so a missing FX asset is a silent no-op and procedural particles still run.
+let fxList=[];
+function spawnFX(key,x,y,opts={}){
+  if(!loadedAssets[key])return;
+  fxList.push({key,x,y,life:0,dur:opts.dur||0.4,size:opts.size||40,grow:opts.grow||0,
+    vy:opts.vy||0,spin:opts.spin||0,rot:Math.random()*Math.PI*2,fade:opts.fade!==false});
+  if(fxList.length>60)fxList.splice(0,20);
+}
+function updateFX(dt){
+  for(let i=fxList.length-1;i>=0;i--){
+    const f=fxList[i];f.life+=dt;f.y+=f.vy*dt;f.rot+=f.spin*dt;
+    if(f.life>=f.dur)fxList.splice(i,1);
+  }
+}
+function drawFXLayer(){
+  if(!fxList.length)return;
+  ctx.save();ctx.globalCompositeOperation='screen';
+  for(const f of fxList){
+    const img=loadedAssets[f.key];if(!img)continue;
+    const t=f.life/f.dur,s=(f.size+f.grow*t)*(0.85+0.3*t);
+    ctx.globalAlpha=f.fade?Math.max(0,1-t):1;
+    ctx.save();ctx.translate(f.x,f.y);ctx.rotate(f.rot);
+    ctx.drawImage(img,-s/2,-s,s,s*2);
+    ctx.restore();
+  }
+  ctx.restore();ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
+}
+
 // ─── Init / Reset ─────────────────────────────────────────────────────────────
 function initGame(){
   player=freshPlayer();
@@ -1024,9 +1062,11 @@ function handleCrash(isSpinout=false){
     player.spinAngle=Math.PI*4;
     createParticles(player.x+16,player.y+16,'#fff',20);
     floatingTexts.push({text:'SPINOUT! -20 FUEL',x:player.x+16,y:player.y-20,timer:1.5,color:'#ff6b6b'});
+    spawnFX('fxSmoke',player.x+16,player.y+16,{dur:0.6,size:48,grow:24,spin:1.5});
   }else{
     createParticles(player.x+16,player.y+16,'#ff4500',30);
     floatingTexts.push({text:'CRASH! -20 FUEL',x:player.x+16,y:player.y-20,timer:1.5,color:'#ff6b6b'});
+    spawnFX('fxExplosion',player.x+16,player.y+24,{dur:0.45,size:46,grow:46});
   }
   // Screen shake (skipped under prefers-reduced-motion)
   if(!reduceMotion){
@@ -1042,6 +1082,7 @@ function handleHydroplane(){
   if(player.invulnerable>0||player.spinLock>0)return;
   player.spinAngle=Math.PI*2;player.spinLock=1.2;player.multiplier=1;
   createParticles(player.x+16,player.y+16,'#00bcff',16);
+  spawnFX('fxSmoke',player.x+16,player.y+16,{dur:0.7,size:50,grow:28,spin:2});
   floatingTexts.push({text:'HYDROPLANE!',x:player.x+16,y:player.y-20,timer:1.2,color:'#00bcff'});
   sfxHydroplaneSound();
 }
@@ -1067,11 +1108,14 @@ function update(dt){
   if(player.nitroActive){
     player.nitroTimer-=dt;
     if(Math.random()<0.4)createParticles(player.x+16,player.y+64,'#00ffff',2);
+    if(Math.random()<0.5)spawnFX('fxTurbo',player.x+16,player.y+58,{dur:0.3,size:30,vy:120}); // turbo trail
     if(player.nitroTimer<=0){player.nitroActive=false;player.nitroCooldown=8.0;}
   }else if(player.nitroCooldown>0){player.nitroCooldown-=dt;}
   if((keys.Space||gpState.boost)&&!player.nitroActive&&player.nitroCooldown<=0){
     player.nitroActive=true;player.nitroTimer=2.5;
-    createParticles(player.x+16,player.y+64,'#00ffff',20);sfxBoost();
+    createParticles(player.x+16,player.y+64,'#00ffff',20);
+    spawnFX('fxNitro',player.x+16,player.y+16,{dur:0.5,size:60,grow:40,spin:3}); // nitro ring burst
+    sfxBoost();
   }
 
   // Throttle / brake / coast. Per-gear acceleration; engine bog cuts it −42% for 1.5s.
@@ -1091,6 +1135,7 @@ function update(dt){
     if(player.overheatTimer>1.2){
       player.speed=Math.min(player.speed,50);player.fuel=Math.max(0,player.fuel-15);
       floatingTexts.push({text:'OVERHEAT! -15% FUEL',x:player.x+16,y:player.y-20,timer:1.5,color:'#ff6b6b'});
+      spawnFX('fxFire',player.x+16,player.y+40,{dur:0.5,size:38,grow:10,vy:60}); // overheat flames
       player.overheatTimer=0;
     }
   }else{player.overheatTimer=Math.max(0,player.overheatTimer-dt*2);}
@@ -1257,6 +1302,7 @@ function update(dt){
           const award=100*player.multiplier;
           player.score+=award;
           createParticles(player.x+16,player.y,'cyan',5);
+          spawnFX('fxSparks',e.x+16,(player.y+e.y+e.h)/2,{dur:0.3,size:34});
           floatingTexts.push({text:`NEAR MISS +${award} x${player.multiplier}`,x:player.x+16,y:player.y+85,timer:1.0,color:'yellow'});
           player.multiplier=Math.min(5,player.multiplier+1);
           nearMissCount++;
@@ -1290,6 +1336,7 @@ function update(dt){
     p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;
     if(p.life<=0)particles.splice(i,1);
   }
+  updateFX(dt);
 
   // Multiplayer publish
   if(roomCode&&Date.now()-lastPublish>180){publishRaceState();lastPublish=Date.now();}
@@ -1366,6 +1413,9 @@ function draw(){
     ctx.fillRect(p.x,p.y,4,4);
     ctx.globalAlpha=1.0;
   });
+
+  // FX overlay (additive: explosions, turbo, sparks, smoke, nitro ring, overheat fire)
+  drawFXLayer();
 
   // Opponent ghost (multiplayer)
   if(ghost.visible){
