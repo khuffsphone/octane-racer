@@ -18,3 +18,9 @@ venv_rembg/
 *.jpeg.orig
 scripts/extract_sprites*.py
 assets/cars/*.jpeg
+# Asset pipeline scratch
+raw/
+sprites/
+*.bak
+__pycache__/
+*.pyc
