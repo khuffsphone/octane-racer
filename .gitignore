@@ -21,3 +21,9 @@ assets/cars/*.jpeg
 
 # Raw asset sheets (working input, not shipped)
 assets/incoming/
+# Build artifacts / pipeline scratch
+index.html.bak
+*.bak
+octane-playtest.html
+__pycache__/
+*.pyc
