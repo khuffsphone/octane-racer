@@ -18,3 +18,7 @@ venv_rembg/
 *.jpeg.orig
 scripts/extract_sprites*.py
 assets/cars/*.jpeg
+
+# Generated standalone playtest builds (base64-inlined; not source)
+octane-playtest.html
+*-playtest.html
