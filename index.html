@@ -248,9 +248,10 @@ button:disabled{filter:grayscale(.4) brightness(.7);cursor:not-allowed}
         <span style="color:var(--yellow)">← / →</span> steer<br/>
         <span style="color:var(--yellow)">A</span> shift up &nbsp;
         <span style="color:var(--yellow)">Z</span> shift down<br/>
-        <span style="color:var(--yellow)">Space</span> boost (when meter full)<br/>
-        Avoid traffic. Near misses fill boost. 3 lives.<br/>
-        <span style="color:var(--muted)">Gamepad: LStick steer · RT/A accel · LT/B brake · X boost</span>
+        <span style="color:var(--yellow)">Space</span> nitro &nbsp; <span style="color:var(--yellow)">M</span> mute<br/>
+        Perfect shift at 9–9.5k RPM. Near misses build a x5 combo.<br/>
+        Fuel is your timer — grab gas cans, mind the rain.<br/>
+        <span style="color:var(--muted)">Gamepad: LStick steer · RT/A accel · LT/B brake · X nitro</span>
       </div>
     </section>
 
@@ -304,12 +305,12 @@ button:disabled{filter:grayscale(.4) brightness(.7);cursor:not-allowed}
         <button class="start-engine-btn" id="menuStartBtn">⚡ Start Engine ⚡</button>
         <button class="arc-btn grey" id="menuHSBtn" style="display:block;margin:12px auto 0">High Scores</button>
         <div class="menu-instructions">
-          USE ARROW KEYS TO DRIVE<br>
-          A AND Z TO SHIFT GEARS<br>
-          SPACEBAR TO BOOST<br>
-          NEAR MISSES FILL BOOST<br>
+          ARROW KEYS TO DRIVE<br>
+          A / Z SHIFT GEARS — NAIL 9-9.5K RPM<br>
+          SPACEBAR FOR NITRO<br>
+          NEAR MISSES BUILD YOUR x5 COMBO<br>
           AVOID TRAFFIC &mdash; THEY SWITCH LANES<br>
-          3 FUEL CANS. GO AS FAR AS YOU CAN
+          WATCH YOUR FUEL. GRAB THE GAS CANS
         </div>
       </div>
     </div>
@@ -356,8 +357,12 @@ button:disabled{filter:grayscale(.4) brightness(.7);cursor:not-allowed}
         <div class="ctrl-btn" id="btn-left">←</div>
         <div class="ctrl-btn" id="btn-right">→</div>
       </div>
+      <div class="ctrl-grp" style="flex-direction:column">
+        <div class="ctrl-btn" id="btn-shiftup" style="border-color:#39ff14;color:#39ff14">A↑</div>
+        <div class="ctrl-btn" id="btn-shiftdown" style="border-color:#ffd166;color:#ffd166">Z↓</div>
+      </div>
       <div class="ctrl-grp">
-        <div class="ctrl-btn" id="btn-boost" style="border-color:#36eaff;color:#36eaff">B</div>
+        <div class="ctrl-btn" id="btn-nitro" style="border-color:#00ffff;color:#00ffff">N</div>
       </div>
       <div class="ctrl-grp" style="flex-direction:column">
         <div class="ctrl-btn" id="btn-up">↑</div>
@@ -488,7 +493,7 @@ async function joinRoom(c){
   if(room.player1Id!==uid&&!room.player2Id){await updateDoc(roomRef,{player2Id:uid,player2Ready:false})}
   await setDoc(doc(db,'rooms',c,'players',uid),{
     id:uid,name:driverName(),ready:false,finishedAtMs:null,finalScore:null,
-    x:400,y:500,speed:0,distance:0,score:0,lives:3,gear:1,boostMeter:0,isBoosting:false,finished:false,
+    x:400,y:500,speed:0,distance:0,score:0,fuel:100,gear:1,nitroActive:false,finished:false,
     updatedAt:serverTimestamp()
   },{merge:true});
   sfxClick();attachRoom(c)}catch(e){setErr('Join room failed: '+e.message)}
@@ -563,8 +568,8 @@ async function publishRaceState(){
   await updateDoc(doc(db,'rooms',roomCode,'players',uid),{
     x:player.x,y:player.y,
     speed:player.speed,distance:player.distance,score:player.score,
-    lives:player.lives,gear:player.gear,
-    boostMeter:player.boostMeter,isBoosting:player.isBoosting,
+    fuel:player.fuel,gear:player.gear,
+    nitroActive:player.nitroActive,
     finished:player.finished||false,
     updatedAt:serverTimestamp()
   })}catch(e){setErr('Publish state failed: '+e.message)}
@@ -646,6 +651,12 @@ el('soundBtn').onclick=()=>{
   el('soundBtn').textContent=soundEnabled?'🔊 Sound On':'🔇 Sound Off';
   if(soundEnabled)sfxClick()
 };
+// §H — M mutes/unmutes all synth audio and flips the speaker icon.
+function toggleMute(){
+  initAudio();soundEnabled=!soundEnabled;
+  el('soundBtn').textContent=soundEnabled?'🔊 Sound On':'🔇 Sound Off';
+  if(soundEnabled)sfxClick();
+}
 
 // ─── Gamepad ─────────────────────────────────────────────────────────────────
 const DEADZONE=0.15;
@@ -689,26 +700,32 @@ window.addEventListener('keydown',e=>{
 
   // Gear shifting (not on repeat)
   if(gameState==='playing'&&!e.repeat){
-    if((e.code==='KeyA')&&player.gear<3){
-      const threshold=gearStats[player.gear].max;
-      if(Math.abs(player.speed-threshold)<=50){
-        player.score+=500;
-        floatingTexts.push({text:'PERFECT SHIFT! +500',x:player.x+16,y:player.y+85,timer:1.5,color:'#00ffff'});
-        sfxPerfectShift();
-      }
-      player.gear++;if(player.gear>topGearReached)topGearReached=player.gear;sfxClick();
-    }
-    if((e.code==='KeyZ')&&player.gear>1){
-      const threshold=gearStats[player.gear-1].max;
-      if(Math.abs(player.speed-threshold)<=50){
-        player.score+=500;
-        floatingTexts.push({text:'PERFECT SHIFT! +500',x:player.x+16,y:player.y+85,timer:1.5,color:'#00ffff'});
-        sfxPerfectShift();
-      }
-      player.gear--;sfxClick();
-    }
+    if(e.code==='KeyA')doUpshift();
+    if(e.code==='KeyZ')doDownshift();
+    if(e.code==='KeyM')toggleMute();
   }
 });
+
+// §5.1 upshift: perfect window 9000–9500 RPM → +200 + speed kick; early (<8000) bogs the
+// engine −42% accel for 1.5s. Callable from keyboard and the touch overlay.
+function doUpshift(){
+  if(gameState!=='playing'||player.gear>=MAX_GEAR)return;
+  const rpm=rpmFor(player.speed,player.gear);
+  if(rpm>=PERFECT_LO&&rpm<=PERFECT_HI){
+    player.score+=200;player.speed+=6; // immediate speed kick
+    floatingTexts.push({text:'PERFECT SHIFT! +200',x:player.x+16,y:player.y+85,timer:1.5,color:'#00ffff'});
+    sfxPerfectShift();
+  }else if(rpm<BOG_RPM){
+    player.bogTimer=1.5; // −42% acceleration for 1.5s
+    player.speed=Math.max(gearMin(player.gear+1),player.speed*0.85);
+    floatingTexts.push({text:'BOGGED!',x:player.x+16,y:player.y-20,timer:1.2,color:'#ff6b6b'});
+  }
+  player.gear++;if(player.gear>topGearReached)topGearReached=player.gear;sfxClick();
+}
+function doDownshift(){
+  if(gameState!=='playing'||player.gear<=1)return;
+  player.gear--;sfxClick();
+}
 window.addEventListener('keyup',e=>{
   if(e.code in keys)keys[e.code]=false;
   if(e.key===' ')keys.Space=false;
@@ -725,29 +742,67 @@ function bindTouch(id,key){
 }
 bindTouch('btn-up','ArrowUp');bindTouch('btn-down','ArrowDown');
 bindTouch('btn-left','ArrowLeft');bindTouch('btn-right','ArrowRight');
-bindTouch('btn-boost','Space');
+bindTouch('btn-nitro','Space');
+// Edge-triggered touch shifters (mirror the A/Z keys).
+function bindTap(id,fn){const b=el(id);if(!b)return;b.addEventListener('touchstart',e=>{e.preventDefault();fn();},{passive:false});}
+bindTap('btn-shiftup',doUpshift);bindTap('btn-shiftdown',doDownshift);
 el('splash-screen').addEventListener('click',startFromSplash);
 
 // ─── Game constants ────────────────────────────────────────────────────────────
+// Milestone 2 gameplay layer — implemented to handoff §5 (constants are authoritative).
+//   §5.1 Transmission: 5 gears, MPH caps 40/75/110/145/185, RPM idle 1000→redline 10000.
+//   §5.2 Nitro · §5.3 Fuel timer · §5.4 Traffic · §5.5 Weather · §5.6 Scoring · §5.7 Difficulty.
+// player.speed is held in MPH; cameraSpeed (px/s for scroll) = speed * SCROLL_K.
 const ROAD_X=200;
 const ROAD_W=400;
+const VERSION='2.0.0-m2';
 
+// §5.1 Transmission. accelRpm/idle2red are mutually consistent: 9000 RPM band / idle2red
+// reproduces the spec's RPM/sec column (e.g. 9000/1.2 = 7500). Gear band lower bound is the
+// previous gear's top speed, so reaching a gear's top speed = redline (10000 RPM).
 const gearStats=[
-  {max:0,accel:0},        // index 0 (unused)
-  {max:250,accel:450},    // Gear 1
-  {max:450,accel:300},    // Gear 2
-  {max:700,accel:200}     // Gear 3
+  {max:0,  idle2red:1.0, accelRpm:0},     // index 0 (unused)
+  {max:40, idle2red:1.2, accelRpm:7500},  // Gear 1
+  {max:75, idle2red:1.8, accelRpm:5000},  // Gear 2
+  {max:110,idle2red:2.4, accelRpm:3800},  // Gear 3
+  {max:145,idle2red:3.2, accelRpm:2800},  // Gear 4
+  {max:185,idle2red:4.8, accelRpm:1900}   // Gear 5
 ];
+const MAX_GEAR=5, RPM_IDLE=1000, RPM_REDLINE=10000, SCROLL_K=1.73;
+const PERFECT_LO=9000, PERFECT_HI=9500, BOG_RPM=8000;
+function gearMin(g){return g<=1?0:gearStats[g-1].max;}
+// MPH gained per second while accelerating within a gear (full band / idle→redline time).
+function gearAccelMPH(g){return (gearStats[g].max-gearMin(g))/gearStats[g].idle2red;}
+function rpmFor(speed,g){const lo=gearMin(g),hi=gearStats[g].max;const f=hi>lo?Math.max(0,Math.min(1,(speed-lo)/(hi-lo))):0;return RPM_IDLE+f*(RPM_REDLINE-RPM_IDLE);}
 
-let highScores=[
+// §5.4 traffic defaults · §5.7 progressive difficulty (every 2000 pts, cap 12000).
+const SPAWN_INTERVAL=2.2;        // s, default
+function difficultyTier(score){return Math.min(6,Math.floor(score/2000));}      // cap at 12000 pts
+function trafficSpeedMult(score){return Math.pow(1.06,difficultyTier(score));}  // +6%/tier
+function spawnInterval(score){return SPAWN_INTERVAL*Math.pow(0.92,difficultyTier(score));} // −8%/tier
+
+// Accessibility: honour prefers-reduced-motion (halt grid scroll, scenery, crash shake).
+const reduceMotion=(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)||false;
+
+// §H persistence: localStorage high scores, try/catch so private/sandboxed contexts never throw.
+const HS_KEY='octane_highscores_v2';
+const defaultHighScores=[
   {name:'RYU',score:15000},
   {name:'AMI',score:10000},
   {name:'GRX',score:7500},
   {name:'CPU',score:5000},
   {name:'NOB',score:2000}
 ];
+function loadHighScores(){
+  try{const raw=localStorage.getItem(HS_KEY);if(raw){const a=JSON.parse(raw);if(Array.isArray(a)&&a.length)return a.slice(0,5);}}catch(e){/* private mode → in-memory */}
+  return defaultHighScores.map(s=>({...s}));
+}
+function persistHighScores(){
+  try{localStorage.setItem(HS_KEY,JSON.stringify(highScores));}catch(e){/* in-memory fallback */}
+}
+let highScores=loadHighScores();
 
-const basePlayerConfig={name:'Racer',color:'#e53e3e'};
+const basePlayerConfig={name:'Racer',color:'#ff3300'};
 let nearMissCount=0;
 let topGearReached=1;
 
@@ -775,18 +830,20 @@ let timeSinceLastSpawn=0;
 const ghost={x:400,y:500,speed:0,gear:1,visible:false};
 
 // ─── Player ────────────────────────────────────────────────────────────────────
-let player={
-  x:400,y:500,w:32,h:64,
-  speed:0,maxSpeed:0,accel:0,
-  gear:1,color:'#e53e3e',
-  lives:3,score:0,distance:0,
-  invulnerable:0,spinAngle:0,
-  wrongGearTimer:0,
-  boostMeter:0,isBoosting:false,boostTimer:0,
-  playTime:0,nextGasDrain:30,nextGasSpawn:45,
-  emergencyGasTimer:0,
-  finished:false
-};
+function freshPlayer(){
+  return {
+    x:400-16,y:480,w:32,h:64,
+    speed:0,maxSpeed:gearStats[1].max,gear:1,color:'#ff3300',
+    fuel:100,score:0,distance:0,
+    invulnerable:0,spinAngle:0,spinLock:0,
+    bogTimer:0,overheatTimer:0,
+    nitroActive:false,nitroTimer:0,nitroCooldown:0,
+    multiplier:1,
+    playTime:0,nextGasSpawn:8,
+    finished:false
+  };
+}
+let player=freshPlayer();
 
 // ─── Drawing helpers ────────────────────────────────────────────────────────────
 
@@ -802,7 +859,7 @@ function drawCar(x,y,width,height,color,isPlayer=false,spinAngle=0,assetKey=null
     // Alpha-following glow: draw with shadowBlur active so the glow
     // follows the sprite's transparent outline, not a bounding rectangle.
     ctx.shadowColor=isPlayer?'#e53e3e':color;
-    ctx.shadowBlur=isPlayer&&player.isBoosting?28:12;
+    ctx.shadowBlur=isPlayer&&player.nitroActive?28:12;
     ctx.drawImage(img, 0, 0, width, height);
     // Second draw with no shadow on top — keeps sprite crisp and opaque
     ctx.shadowBlur=0;
@@ -813,7 +870,7 @@ function drawCar(x,y,width,height,color,isPlayer=false,spinAngle=0,assetKey=null
 
   // Procedural fallback
   ctx.shadowColor=color;
-  ctx.shadowBlur=isPlayer&&player.isBoosting?20:8;
+  ctx.shadowBlur=isPlayer&&player.nitroActive?20:8;
   ctx.fillStyle=color;
   ctx.fillRect(4,4,width-8,height-8);
   ctx.shadowBlur=0;
@@ -903,44 +960,49 @@ function createParticles(x,y,color,count){
 
 // ─── Init / Reset ─────────────────────────────────────────────────────────────
 function initGame(){
-  player={
-    x:400-16,y:480,w:32,h:64,
-    speed:0,maxSpeed:600,accel:520,
-    color:'#e53e3e',
-    lives:3,score:0,distance:0,
-    invulnerable:0,spinAngle:0,
-    gear:1,wrongGearTimer:0,
-    boostMeter:0,isBoosting:false,boostTimer:0,
-    playTime:0,nextGasDrain:30,nextGasSpawn:45,
-    emergencyGasTimer:0,
-    finished:false
-  };
+  player=freshPlayer();
   entities=[];pickups=[];puddles=[];birds=[];particles=[];floatingTexts=[];
   nearMissCount=0;topGearReached=1;
   scenery=[];
-  weather={type:'clear',intensity:0,timer:12+Math.random()*8,drops:[]};
+  // §5.5 weather machine: sunny45 → warning5 → rain30 → clearing10 (90s loop).
+  weather={state:'sunny',timer:45,intensity:0,drops:[]};
   bgOffsetY=0;cameraSpeed=0;timeSinceLastSpawn=0;
-  // Grace period: 2s invulnerability at spawn so first traffic can't instant-kill
-  player.invulnerable=2.0;
-  // Init scenery
-  for(let i=0;i<10;i++)spawnScenery(true);
+  // §5.8 post-crash/spawn invulnerability 2.5s so first traffic can't instant-kill.
+  player.invulnerable=2.5;
+  if(!reduceMotion)for(let i=0;i<10;i++)spawnScenery(true);
 }
 
 // ─── Entity spawning ──────────────────────────────────────────────────────────
+const LANES=4;
+const LANE_W=ROAD_W/LANES;
+function laneCenter(lane){return ROAD_X+(lane*LANE_W)+(LANE_W/2);}
+// §5.8 fairness: a lane is "open near the top" if no traffic occupies its spawn band.
+function laneOpenAtTop(lane){
+  const cx=laneCenter(lane);
+  for(const e of entities){ if(e.y<160 && Math.abs((e.x+e.w/2)-cx)<LANE_W*0.6) return false; }
+  return true;
+}
+// Pick a lane that is open at the top; returns -1 if every lane is blocked (skip spawn).
+function pickSpawnLane(){
+  const open=[]; for(let l=0;l<LANES;l++) if(laneOpenAtTop(l)) open.push(l);
+  return open.length?open[Math.floor(Math.random()*open.length)]:-1;
+}
 function spawnEntity(){
   if(entities.length>12)return;
-  const laneW=ROAD_W/4;
-  const lane=Math.floor(Math.random()*4);
-  const x=ROAD_X+(lane*laneW)+(laneW/2)-16;
+  // §5.8 never fill every lane — leave at least one open; never stack at the spawn row.
+  const openCount=[0,1,2,3].filter(laneOpenAtTop).length;
+  if(openCount<=1)return;
+  const lane=pickSpawnLane();
+  if(lane<0)return;
+  const x=laneCenter(lane)-16;
   const y=-100;
-  for(let e of entities){
-    if(Math.abs(e.y-y)<150&&Math.abs(e.x-x)<40)return;
-  }
   const assetKey=trafficAssetKeys[Math.floor(Math.random()*trafficAssetKeys.length)];
+  // §5.4 base downward speed (px/s) scaled by §5.7 progressive difficulty.
+  const speed=(80+Math.random()*100)*trafficSpeedMult(player.score);
   entities.push({
     type:'traffic',lane,
     x,y,w:32,h:64,
-    speed:80+Math.random()*220,
+    speed,
     color:`hsl(${Math.random()*360},70%,50%)`,
     assetKey,
     switchTimer:1+Math.random()*3,
@@ -949,31 +1011,45 @@ function spawnEntity(){
 }
 
 // ─── Crash handler ────────────────────────────────────────────────────────────
+// §5.3 collision costs 20 fuel; §5.6 resets the multiplier; §5.8 grants 2.5s invuln.
+// Game over only when the tank empties (or a collision with the tank already empty).
 function handleCrash(isSpinout=false){
-  player.lives--;
+  if(player.fuel<=0){endRun();return;}
   player.speed=0;cameraSpeed=0;
-  player.invulnerable=2.0;
+  player.invulnerable=2.5;
+  player.multiplier=1;            // §5.6 reset combo on any hit
+  player.fuel=Math.max(0,player.fuel-20);
   sfxCrash();
   if(isSpinout){
     player.spinAngle=Math.PI*4;
     createParticles(player.x+16,player.y+16,'#fff',20);
-    floatingTexts.push({text:'SPINOUT!',x:player.x+16,y:player.y-20,timer:1.5,color:'#ff6b6b'});
+    floatingTexts.push({text:'SPINOUT! -20 FUEL',x:player.x+16,y:player.y-20,timer:1.5,color:'#ff6b6b'});
   }else{
     createParticles(player.x+16,player.y+16,'#ff4500',30);
-    floatingTexts.push({text:'CRASH! -1 LIFE',x:player.x+16,y:player.y-20,timer:1.5,color:'#ff6b6b'});
+    floatingTexts.push({text:'CRASH! -20 FUEL',x:player.x+16,y:player.y-20,timer:1.5,color:'#ff6b6b'});
   }
-  // Screen shake
-  canvas.style.transform='translate(5px,5px)';
-  setTimeout(()=>canvas.style.transform='translate(-5px,-5px)',50);
-  setTimeout(()=>canvas.style.transform='translate(5px,-5px)',100);
-  setTimeout(()=>canvas.style.transform='translate(0,0)',150);
-
-  if(player.lives<=0){
-    player.finished=true;
-    // Publish finish to multiplayer if in a race
-    if(roomCode&&roomData?.status==='racing')publishFinish();
-    setTimeout(triggerGameOver,500);
+  // Screen shake (skipped under prefers-reduced-motion)
+  if(!reduceMotion){
+    canvas.style.transform='translate(5px,5px)';
+    setTimeout(()=>canvas.style.transform='translate(-5px,-5px)',50);
+    setTimeout(()=>canvas.style.transform='translate(5px,-5px)',100);
+    setTimeout(()=>canvas.style.transform='translate(0,0)',150);
   }
+  if(player.fuel<=0)endRun();
+}
+// Hydroplane: §5.5 360° spin for 1.2s, steering ignored; resets the combo, no fuel cost.
+function handleHydroplane(){
+  if(player.invulnerable>0||player.spinLock>0)return;
+  player.spinAngle=Math.PI*2;player.spinLock=1.2;player.multiplier=1;
+  createParticles(player.x+16,player.y+16,'#00bcff',16);
+  floatingTexts.push({text:'HYDROPLANE!',x:player.x+16,y:player.y-20,timer:1.2,color:'#00bcff'});
+  sfxHydroplaneSound();
+}
+function endRun(){
+  if(player.finished)return;
+  player.finished=true;
+  if(roomCode&&roomData?.status==='racing')publishFinish();
+  triggerGameOver();
 }
 
 // ─── Update ───────────────────────────────────────────────────────────────────
@@ -983,62 +1059,52 @@ function update(dt){
   // Poll gamepad
   pollGamepad();
 
-  // Gear / speed
-  const currentGear=gearStats[player.gear];
-  player.maxSpeed=currentGear.max;
-  player.accel=currentGear.accel;
-  let wrongGear=false;
+  // ── §5.1/§5.2 Transmission, nitro, throttle (player.speed is MPH) ─────────────
+  const nitroMul=player.nitroActive?1.25:1;
+  player.maxSpeed=gearStats[player.gear].max*nitroMul;
 
-  // Driving stays live during spawn/crash grace — invulnerability shields
-  // collisions/puddles only, so respawn is never a 2s control freeze.
-  {
-    if(player.isBoosting){
-      player.boostTimer-=dt;
-      player.speed=900;
-      if(Math.random()<0.3)createParticles(player.x+16,player.y+64,'#00ffff',2);
-      if(player.boostTimer<=0)player.isBoosting=false;
-    }else{
-      const wantsBoost=(keys.Space||gpState.boost)&&player.boostMeter>=100;
-      if(wantsBoost){
-        player.isBoosting=true;player.boostTimer=3.0;player.boostMeter=0;
-        createParticles(player.x+16,player.y+64,'#00ffff',20);
-        sfxBoost();
-      }
-      const accel=keys.ArrowUp||gpState.accel;
-      const brake=keys.ArrowDown||gpState.brake;
-      if(accel)player.speed+=player.accel*dt;
-      else if(brake)player.speed-=1200*dt;
-      else player.speed-=100*dt;
-
-      if(player.speed>player.maxSpeed)player.speed-=500*dt;
-
-      // Engine stress
-      // Lug thresholds sit below each gear's perfect-shift window (G1→G2 window
-      // is 200–300, G2→G3 is 400–500) so shifting on the prompt is never punished.
-      if(player.speed>5){
-        if(player.gear===1&&player.speed>=420)wrongGear=true;
-        else if(player.gear===2&&player.speed<=180){wrongGear=true;player.accel=50;}
-        else if(player.gear===3&&player.speed<=380){wrongGear=true;player.accel=50;}
-      }else if(player.speed<=5&&player.gear>1&&(keys.ArrowUp||gpState.accel)){wrongGear=true;player.accel=50;}
-    }
+  // Nitro lifecycle: +25% top speed, 2.5s active, 8.0s cooldown, double fuel drain.
+  if(player.nitroActive){
+    player.nitroTimer-=dt;
+    if(Math.random()<0.4)createParticles(player.x+16,player.y+64,'#00ffff',2);
+    if(player.nitroTimer<=0){player.nitroActive=false;player.nitroCooldown=8.0;}
+  }else if(player.nitroCooldown>0){player.nitroCooldown-=dt;}
+  if((keys.Space||gpState.boost)&&!player.nitroActive&&player.nitroCooldown<=0){
+    player.nitroActive=true;player.nitroTimer=2.5;
+    createParticles(player.x+16,player.y+64,'#00ffff',20);sfxBoost();
   }
 
-  // Apply stress
-  if(wrongGear&&player.invulnerable<=0&&!player.isBoosting){
-    player.wrongGearTimer+=dt;
-    if(player.wrongGearTimer>=2.0){handleCrash(true);player.wrongGearTimer=0;}
-  }else{player.wrongGearTimer=Math.max(0,player.wrongGearTimer-dt*2);}
-
-  // Spinout animation
-  if(player.spinAngle>0){player.spinAngle-=dt*10;if(player.spinAngle<0)player.spinAngle=0;}
-
+  // Throttle / brake / coast. Per-gear acceleration; engine bog cuts it −42% for 1.5s.
+  const accelKey=keys.ArrowUp||gpState.accel;
+  const brakeKey=keys.ArrowDown||gpState.brake;
+  let accelMPH=gearAccelMPH(player.gear);
+  if(player.bogTimer>0){player.bogTimer-=dt;accelMPH*=0.58;}
+  if(accelKey)player.speed+=accelMPH*dt;
+  else if(brakeKey)player.speed-=90*dt;
+  else player.speed-=14*dt;
+  if(player.speed>player.maxSpeed)player.speed-=60*dt; // soft cap at gear top speed
   player.speed=Math.max(0,player.speed);
-  cameraSpeed=player.speed;
 
-  // Steering (keyboard + gamepad; rain reduces handling)
-  if(player.speed>0){
-    const rainPenalty=1-(weather.intensity*0.45);
-    const speedFactor=Math.max(0.5,1.3-(player.speed/1000));
+  // §5.1 Overheat: holding redline (≥ gear top speed) >1.2s → forced 50 MPH, −15% fuel.
+  if(!player.nitroActive&&player.speed>=gearStats[player.gear].max-0.5){
+    player.overheatTimer+=dt;
+    if(player.overheatTimer>1.2){
+      player.speed=Math.min(player.speed,50);player.fuel=Math.max(0,player.fuel-15);
+      floatingTexts.push({text:'OVERHEAT! -15% FUEL',x:player.x+16,y:player.y-20,timer:1.5,color:'#ff6b6b'});
+      player.overheatTimer=0;
+    }
+  }else{player.overheatTimer=Math.max(0,player.overheatTimer-dt*2);}
+
+  // Spinout / hydroplane spin; spinLock disables steering during a 1.2s hydroplane.
+  if(player.spinAngle>0){player.spinAngle-=dt*10;if(player.spinAngle<0)player.spinAngle=0;}
+  if(player.spinLock>0)player.spinLock-=dt;
+
+  cameraSpeed=player.speed*SCROLL_K; // MPH → px/s scroll
+
+  // ── Steering (rain −35%; ignored during hydroplane spinLock) ──────────────────
+  if(player.speed>0&&player.spinLock<=0){
+    const rainPenalty=1-(weather.intensity*0.35);
+    const speedFactor=Math.max(0.5,1.3-(player.speed/265));
     const steerAmt=Math.abs(gpState.steer)>DEADZONE?Math.abs(gpState.steer):1;
     const turnSpeed=440*dt*speedFactor*rainPenalty;
     if(keys.ArrowLeft||gpState.steer<0)player.x-=turnSpeed*steerAmt;
@@ -1046,45 +1112,27 @@ function update(dt){
   }
   player.x=Math.max(ROAD_X,Math.min(player.x,ROAD_X+ROAD_W-player.w));
 
-  // Distance & score
-  const multiplier=player.isBoosting?2:1;
-  player.distance+=player.speed*dt;
-  player.score+=((player.speed*player.speed*dt)/1500)*multiplier;
+  // ── §5.6 Scoring: passive +10 pts per 100 px travelled ────────────────────────
+  const dpx=cameraSpeed*dt;
+  player.distance+=dpx;
+  player.score+=dpx/10;
 
-  // Timers
+  // ── §5.3 Fuel is the core timer / game-over condition ─────────────────────────
   if(player.invulnerable>0)player.invulnerable-=dt;
   player.playTime+=dt;
+  let drain=1.2+Math.max(0,player.gear-3)*0.2;   // +0.2/s per gear above 3
+  if(player.nitroActive)drain*=2;                // double drain under nitro
+  player.fuel-=drain*dt;
+  if(player.fuel<=0){player.fuel=0;endRun();return;}
+  if(player.fuel<25&&!player._lowFuel){player._lowFuel=true;floatingTexts.push({text:'LOW FUEL!',x:400,y:150,timer:2.0,color:'#ff6b6b'});}
+  else if(player.fuel>=25){player._lowFuel=false;}
 
-  // Fuel drain (lives as fuel)
-  if(player.playTime>=player.nextGasDrain){
-    player.nextGasDrain+=30;
-    player.lives--;
-    floatingTexts.push({text:'-1 FUEL CAN!',x:player.x+16,y:player.y-20,timer:2.0,color:'#e53e3e'});
-    if(player.lives<=0)handleCrash(true);
-  }
-
-  // Gas pickup spawn
+  // §5.3/§5.8 gas airdrop — never under/behind traffic (pickSpawnLane enforces fairness).
   if(player.playTime>=player.nextGasSpawn){
-    player.nextGasSpawn+=45;
-    const laneW=ROAD_W/4;
-    const lane=Math.floor(Math.random()*4);
-    pickups.push({x:ROAD_X+(lane*laneW)+(laneW/2),y:-100,radius:12});
-    floatingTexts.push({text:'FUEL AIRDROP!',x:400,y:150,timer:3.0,color:'#00ffff'});
+    player.nextGasSpawn+=10;
+    const lane=pickSpawnLane();
+    if(lane>=0){pickups.push({x:laneCenter(lane),y:-100,radius:12});floatingTexts.push({text:'FUEL AIRDROP!',x:400,y:150,timer:2.5,color:'#00ff66'});}
   }
-
-  // Emergency gas (lives===1)
-  if(player.lives===1){
-    player.emergencyGasTimer-=dt;
-    if(player.emergencyGasTimer<=0){
-      const laneW=ROAD_W/4;
-      const playerLane=Math.floor(Math.max(0,Math.min(3,(player.x+player.w/2-ROAD_X)/laneW)));
-      let spawnLane;
-      do{spawnLane=Math.floor(Math.random()*4)}while(spawnLane===playerLane);
-      pickups.push({x:ROAD_X+(spawnLane*laneW)+(laneW/2),y:-100,radius:12});
-      floatingTexts.push({text:'CRITICAL FUEL AHEAD!',x:400,y:150,timer:3.0,color:'#ff6b6b'});
-      player.emergencyGasTimer=15.0;
-    }
-  }else{player.emergencyGasTimer=0;}
 
   // Floating texts
   for(let i=floatingTexts.length-1;i>=0;i--){
@@ -1093,37 +1141,30 @@ function update(dt){
     if(floatingTexts[i].timer<=0)floatingTexts.splice(i,1);
   }
 
-  // Camera
-  bgOffsetY+=cameraSpeed*dt;
-  if(bgOffsetY>100)bgOffsetY-=100;
+  // Camera (grid scroll frozen under prefers-reduced-motion)
+  if(!reduceMotion){bgOffsetY+=cameraSpeed*dt;if(bgOffsetY>100)bgOffsetY-=100;}
 
-  // ── Phase 2: Weather system ─────────────────────────────────────────────────
+  // ── §5.5 Weather state machine: sunny45 → warning5 → rain30 → clearing10 ──────
   weather.timer-=dt;
   if(weather.timer<=0){
-    if(weather.type==='clear'){
-      weather.type='rain';
-      weather.timer=5+Math.random()*5;
-      floatingTexts.push({text:'RAIN!',x:400,y:200,timer:2.0,color:'#87ceeb'});
-    }else{
-      weather.type='clear';
-      weather.timer=12+Math.random()*10;
-    }
+    const next={sunny:['warning',5],warning:['rain',30],rain:['clearing',10],clearing:['sunny',45]}[weather.state];
+    weather.state=next[0];weather.timer=next[1];
+    if(weather.state==='warning')floatingTexts.push({text:'STORM AHEAD',x:400,y:200,timer:2.0,color:'#ffd166'});
+    if(weather.state==='rain')floatingTexts.push({text:'RAIN!',x:400,y:200,timer:2.0,color:'#87ceeb'});
   }
-  if(weather.type==='rain'&&weather.intensity<1){
-    weather.intensity=Math.min(1,weather.intensity+dt*0.5);
-  }else if(weather.type==='clear'&&weather.intensity>0){
-    weather.intensity=Math.max(0,weather.intensity-dt*0.2);
-  }
+  // Intensity ramps to 1 during rain, eases back otherwise (warning teases a light haze).
+  if(weather.state==='rain')weather.intensity=Math.min(1,weather.intensity+dt*0.5);
+  else if(weather.state==='warning')weather.intensity=Math.min(0.35,weather.intensity+dt*0.1);
+  else weather.intensity=Math.max(0,weather.intensity-dt*0.3);
   if(weather.intensity>0){
     const dropsToSpawn=Math.floor(weather.intensity*10);
     for(let i=0;i<dropsToSpawn;i++){
       weather.drops.push({x:Math.random()*1200-200,y:-20,length:15+Math.random()*25,speed:800+Math.random()*500});
     }
-    // Spawn puddles on road during rain
-    if(Math.random()<weather.intensity*0.008){
-      const pWidth=15+Math.random()*20;
-      const px=ROAD_X+pWidth+Math.random()*(ROAD_W-pWidth*2);
-      puddles.push({x:px,y:-100,w:pWidth});
+    // §5.5 puddles only during rain, 45×20 px, at most 2 on screen, never under traffic.
+    if(weather.state==='rain'&&puddles.length<2&&Math.random()<weather.intensity*0.012){
+      const lane=pickSpawnLane();
+      if(lane>=0)puddles.push({x:laneCenter(lane),y:-100,w:45,h:20});
     }
   }
   for(let i=weather.drops.length-1;i>=0;i--){
@@ -1133,8 +1174,8 @@ function update(dt){
     if(d.y>650)weather.drops.splice(i,1);
   }
 
-  // ── Phase 2: Scenery ─────────────────────────────────────────────────────────
-  if(Math.random()<0.05)spawnScenery();
+  // ── Phase 2: Scenery (parallax; suppressed under prefers-reduced-motion) ──────
+  if(!reduceMotion&&Math.random()<0.05)spawnScenery();
   for(let i=scenery.length-1;i>=0;i--){
     scenery[i].y+=cameraSpeed*scenery[i].speedMultiplier*dt;
     if(scenery[i].y>700)scenery.splice(i,1);
@@ -1164,88 +1205,78 @@ function update(dt){
     if(b.x>950||b.x<-150||b.y<-100||b.y>700)birds.splice(i,1);
   }
 
-  // ── Phase 2: Puddles ─────────────────────────────────────────────────────────
+  // ── §5.5 Puddles → hydroplane (45×20; harmless during invuln/spin) ────────────
   for(let i=puddles.length-1;i>=0;i--){
     const p=puddles[i];
     p.y+=cameraSpeed*dt;
-    if(player.invulnerable<=0&&!player.isBoosting){
-      if(Math.abs((player.x+16)-p.x)<(16+p.w*0.8)&&Math.abs((player.y+32)-p.y)<(32+p.w*0.4)){
-        floatingTexts.push({text:'HYDROPLANE! -1 FUEL',x:player.x+16,y:player.y-20,timer:2.0,color:'#e53e3e'});
-        sfxHydroplaneSound();
-        handleCrash(true);
+    if(player.invulnerable<=0&&player.spinLock<=0){
+      if(Math.abs((player.x+16)-p.x)<(16+p.w*0.4)&&Math.abs((player.y+32)-p.y)<(32+p.h*0.5)){
+        handleHydroplane();
         puddles.splice(i,1);continue;
       }
     }
     if(p.y>700)puddles.splice(i,1);
   }
 
-  // Spawn traffic
-  const baseSpawnRate=0.03+(player.distance/250000);
-  if(Math.random()<Math.min(0.12,baseSpawnRate))spawnEntity();
+  // §5.4/§5.7 Spawn traffic on a difficulty-scaled interval (default 2.2s).
+  timeSinceLastSpawn+=dt;
+  if(timeSinceLastSpawn>=spawnInterval(player.score)){timeSinceLastSpawn=0;spawnEntity();}
 
-  // Update entities
-  const difficulty=Math.min(1.0,player.distance/20000);
-  const laneW=ROAD_W/4;
+  // ── Update entities (lane-switch AI cadence per §5.4) ─────────────────────────
+  const difficulty=Math.min(1.0,player.score/12000);
   for(let i=entities.length-1;i>=0;i--){
     const e=entities[i];
     const relSpeed=e.speed-cameraSpeed;
     e.y-=relSpeed*dt;
 
     if(e.type==='traffic'){
-      // Lane-switching AI
+      // Lane-switching AI: check roughly every 1.0s, more often as difficulty rises.
       if(e.switchTimer>0){e.switchTimer-=dt;}
-      else if(e.y<200&&Math.random()<difficulty*0.03){
+      else if(e.y<200&&Math.random()<0.3+difficulty*0.4){
         const dir=Math.random()>0.5?1:-1;
-        if(e.lane+dir>=0&&e.lane+dir<=3){
-          e.lane+=dir;e.switchTimer=2+Math.random()*4;
+        const nl=e.lane+dir;
+        if(nl>=0&&nl<LANES&&laneOpenAtTop(nl)){      // never merge into an occupied lane
+          e.lane=nl;e.switchTimer=1.0;
           createParticles(e.x+16,e.y+e.h,'#ccc',10);
-        }
+        }else{e.switchTimer=1.0;}
       }
-      // Smooth to target lane
-      const targetX=ROAD_X+(e.lane*laneW)+(laneW/2)-16;
+      const targetX=laneCenter(e.lane)-16;
       e.x+=(targetX-e.x)*4*dt;
     }
 
-    // Collision
-    if(player.invulnerable<=0&&!player.isBoosting){
+    if(player.invulnerable<=0){
+      // Collision
       if(player.x<e.x+e.w&&player.x+player.w>e.x&&player.y<e.y+e.h&&player.y+player.h>e.y){
         handleCrash(false);
       }
-      // Near miss
-      if(e.type==='traffic'&&!e.passed){
-        if(e.y>player.y+player.h){
-          e.passed=true;
-          if(Math.abs(e.x-player.x)<50){
-            player.score+=500;
-            player.boostMeter=Math.min(100,player.boostMeter+25);
-            createParticles(player.x+16,player.y,'cyan',5);
-            floatingTexts.push({text:'NEAR MISS!!! +500',x:player.x+16,y:player.y+85,timer:1.0,color:'yellow'});
-            nearMissCount++;
-            sfxNearMiss();
-          }
+      // §5.6 Near-miss: lateral edge gap 12–35 px → +100×multiplier, chain to ×5.
+      if(e.type==='traffic'&&!e.passed&&e.y>player.y+player.h){
+        e.passed=true;
+        const gap=Math.abs(e.x-player.x)-player.w;
+        if(gap>=12&&gap<=35){
+          const award=100*player.multiplier;
+          player.score+=award;
+          createParticles(player.x+16,player.y,'cyan',5);
+          floatingTexts.push({text:`NEAR MISS +${award} x${player.multiplier}`,x:player.x+16,y:player.y+85,timer:1.0,color:'yellow'});
+          player.multiplier=Math.min(5,player.multiplier+1);
+          nearMissCount++;
+          sfxNearMiss();
         }
-      }
-    }else if(player.isBoosting){
-      if(player.x<e.x+e.w&&player.x+player.w>e.x&&player.y<e.y+e.h&&player.y+player.h>e.y){
-        e.x+=(e.x>player.x?1:-1)*200;e.y-=100;
-        createParticles(e.x+16,e.y+32,'white',10);
-        if(e.type==='traffic')player.score+=1000;
       }
     }
 
     if(e.y>700||e.y<-500||e.x<-100||e.x>900)entities.splice(i,1);
   }
 
-  // Pickups
+  // ── §5.3 Gas pickups: +35 fuel (cap 100) ──────────────────────────────────────
   for(let i=pickups.length-1;i>=0;i--){
     const p=pickups[i];
     p.y+=cameraSpeed*dt;
     if(player.invulnerable<=0){
       if(Math.abs((player.x+16)-p.x)<26&&Math.abs((player.y+32)-p.y)<42){
-        if(player.lives<3)player.lives++;
-        player.score+=1000;
-        createParticles(p.x,p.y,'#00ffff',15);
-        floatingTexts.push({text:'FUEL RECOVERED!',x:player.x+16,y:player.y-20,timer:1.5,color:'#00ffff'});
+        player.fuel=Math.min(100,player.fuel+35);
+        createParticles(p.x,p.y,'#00ff66',15);
+        floatingTexts.push({text:'FUEL +35',x:player.x+16,y:player.y-20,timer:1.5,color:'#00ff66'});
         sfxPickup();
         pickups.splice(i,1);continue;
       }
@@ -1349,7 +1380,7 @@ function draw(){
       drawCar(player.x,player.y,player.w,player.h,player.color,true,player.spinAngle,'playerCar');
       // Exhaust
       if(player.speed>100&&player.invulnerable<=0){
-        ctx.fillStyle=player.isBoosting?'#00ffff':'rgba(255,255,255,0.5)';
+        ctx.fillStyle=player.nitroActive?"#00ffff":"rgba(255,255,255,0.5)";
         ctx.fillRect(player.x+8,player.y+player.h,4,Math.random()*20);
         ctx.fillRect(player.x+20,player.y+player.h,4,Math.random()*20);
       }
@@ -1418,72 +1449,50 @@ function drawHUD(){
   ctx.fillText(`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(ms).padStart(2,'0')}`,790,50);
   ctx.textAlign='left';
 
-  // Speed bar label + shift prompt
+  // Speed (MPH) + shift prompt at perfect-shift RPM window
+  const rpm=rpmFor(player.speed,player.gear);
   ctx.fillStyle='white';ctx.font='10px "Press Start 2P"';
   ctx.fillText('SPEED',20,95);
-  const maxSpeedo=gearStats[3]?gearStats[3].max:700;
-  if(!player.isBoosting&&gearStats[player.gear]){
-    if(player.gear<3&&player.speed>=gearStats[player.gear].max-20){
-      if(Math.floor(Date.now()/150)%2===0){ctx.fillStyle='#00ffff';ctx.fillText('SHIFT UP!',95,95);}
-    }else if(player.gear>1&&player.speed<=gearStats[player.gear-1].max+30){
-      if(Math.floor(Date.now()/150)%2===0){ctx.fillStyle='#e53e3e';ctx.fillText('SHIFT DOWN!',80,95);}
-    }
+  ctx.fillStyle='#ffd166';ctx.fillText(Math.round(player.speed)+' MPH',75,95);
+  if(player.gear<MAX_GEAR&&rpm>=PERFECT_LO&&Math.floor(Date.now()/120)%2===0){
+    ctx.fillStyle='#39ff14';ctx.fillText('SHIFT!',20,118);
   }
 
-  // Speed bar
-  ctx.fillStyle='#555';ctx.fillRect(20,105,140,10);
-  if(gearStats[player.gear]){
-    ctx.fillStyle=player.isBoosting?'#00ffff':(player.wrongGearTimer>0&&!player.isBoosting?'#e53e3e':'#3182ce');
-  }
-  ctx.fillRect(20,105,140*Math.min(1,player.speed/maxSpeedo),10);
-  // Gear notches
-  ctx.fillStyle='white';
-  if(gearStats[1]&&gearStats[2]){
-    ctx.fillRect(20+140*(gearStats[1].max/maxSpeedo),105,2,10);
-    ctx.fillRect(20+140*(gearStats[2].max/maxSpeedo),105,2,10);
-  }
+  // RPM / redline bar (turns red in the perfect-shift band, flashes at redline)
+  const rpmF=Math.min(1,(rpm-RPM_IDLE)/(RPM_REDLINE-RPM_IDLE));
+  ctx.fillStyle='#222';ctx.fillRect(20,125,140,10);
+  ctx.fillStyle=rpm>=PERFECT_LO?'#39ff14':(rpm>=8500?'#ffd166':'#3182ce');
+  ctx.fillRect(20,125,140*rpmF,10);
+  // perfect-shift window marker
+  ctx.fillStyle='#39ff14';
+  ctx.fillRect(20+140*((PERFECT_LO-RPM_IDLE)/(RPM_REDLINE-RPM_IDLE)),123,2,14);
 
-  // Boost meter
-  ctx.fillStyle='white';ctx.font='10px "Press Start 2P"';
-  ctx.fillText('BOOST',20,140);
-  ctx.fillStyle='#222';ctx.strokeStyle='#fff';ctx.lineWidth=2;
-  ctx.strokeRect(20,150,140,10);
-  if(player.boostMeter>=100){
-    ctx.fillStyle=Math.floor(Date.now()/100)%2===0?'#00ffff':'white';
-  }else{ctx.fillStyle='#00ffff';}
-  ctx.fillRect(20,150,140*(player.boostMeter/100),10);
+  // Nitro gauge (ready / active / cooling down)
+  ctx.fillStyle='white';ctx.font='10px "Press Start 2P"';ctx.fillText('NITRO',20,158);
+  ctx.fillStyle='#222';ctx.fillRect(20,165,140,10);
+  let nf,ncol;
+  if(player.nitroActive){nf=player.nitroTimer/2.5;ncol=Math.floor(Date.now()/100)%2===0?'#00ffff':'white';}
+  else if(player.nitroCooldown>0){nf=1-(player.nitroCooldown/8);ncol='#888';}
+  else{nf=1;ncol='#00ffff';}
+  ctx.fillStyle=ncol;ctx.fillRect(20,165,140*Math.max(0,Math.min(1,nf)),10);
 
   // Gear indicator
-  ctx.fillStyle='white';ctx.font='10px "Press Start 2P"';
-  ctx.fillText('GEAR:',20,185);
-  ctx.fillStyle=player.isBoosting?'#00ffff':'yellow';
-  ctx.font='14px "Press Start 2P"';
-  ctx.fillText(player.isBoosting?'B':String(player.gear),85,185);
-
-  // Lives (fuel cans)
-  ctx.fillStyle='white';ctx.font='10px "Press Start 2P"';
-  ctx.fillText('LIVES',20,220);
-  for(let i=0;i<3;i++){
-    const hx=35+i*30,hy=235;
-    if(i<player.lives){
-      ctx.fillStyle='#e53e3e';ctx.fillRect(hx-8,hy,16,18);
-      ctx.fillStyle='#ccc';ctx.fillRect(hx-4,hy-4,8,4);
-      ctx.fillStyle='#8b0000';ctx.fillRect(hx-8,hy+4,16,3);
-      ctx.fillStyle='white';ctx.font='8px "Press Start 2P"';ctx.textAlign='center';
-      ctx.fillText('F',hx,hy+15);ctx.textAlign='left';
-    }else{
-      ctx.fillStyle='#555';ctx.fillRect(hx-8,hy,16,18);
-      ctx.fillStyle='#333';ctx.fillRect(hx-4,hy-4,8,4);
-    }
+  ctx.fillStyle='white';ctx.font='10px "Press Start 2P"';ctx.fillText('GEAR',20,198);
+  ctx.fillStyle=player.nitroActive?'#00ffff':'yellow';ctx.font='14px "Press Start 2P"';
+  ctx.fillText(String(player.gear),85,199);
+  // Multiplier
+  if(player.multiplier>1){
+    ctx.fillStyle='#ffd166';ctx.font='12px "Press Start 2P"';
+    ctx.fillText('x'+player.multiplier,120,199);
   }
 
-  // Engine stress warning
-  if(player.wrongGearTimer>0&&!player.isBoosting&&player.invulnerable<=0){
-    ctx.fillStyle=Math.floor(Date.now()/100)%2===0?'red':'yellow';
-    ctx.font='8px "Press Start 2P"';ctx.fillText('STRESS!',105,220);
-    ctx.fillStyle='#555';ctx.fillRect(105,230,60,8);
-    ctx.fillStyle='red';ctx.fillRect(105,230,60*(player.wrongGearTimer/2.0),8);
-  }
+  // Fuel bar (the core timer) — green→amber→red, flashes when low
+  ctx.fillStyle='white';ctx.font='10px "Press Start 2P"';ctx.fillText('FUEL',20,224);
+  ctx.fillStyle='#222';ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.strokeRect(20,232,140,14);
+  const ff=Math.max(0,Math.min(1,player.fuel/100));
+  let fcol=ff>0.5?'#00ff66':ff>0.25?'#ffd166':'#ff3300';
+  if(player.fuel<25&&Math.floor(Date.now()/150)%2===0)fcol='#ff6b6b';
+  ctx.fillStyle=fcol;ctx.fillRect(20,232,140*ff,14);
 }
 
 // ─── Game loop ────────────────────────────────────────────────────────────────
@@ -1566,6 +1575,7 @@ function saveHighScore(){
   highScores.push({name:initials,score:Math.floor(player.score)});
   highScores.sort((a,b)=>b.score-a.score);
   if(highScores.length>5)highScores.pop();
+  persistHighScores();   // §H localStorage (try/catch wrapped)
   el('new-highscore-box').style.display='none';
   el('gameover-buttons').style.display='block';
   showScreen('highscores-screen');
