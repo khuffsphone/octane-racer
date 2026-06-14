@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
 <title>Octane Street Racer — Arcade</title>
 <meta name="description" content="Octane Street Racer: a vertical arcade racing game with gear shifting, boost, near-miss scoring, and weather hazards."/>
-<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
 <style>
 /* ── Design tokens ─────────────────────────────────────────── */
 :root{
-  --bg:#070b14;--panel:#0d1730ee;--line:#2a3f70;
-  --text:#e8f1ff;--muted:#9cb1d8;
-  --cyan:#36eaff;--pink:#ff3fb4;--yellow:#ffd166;
-  --ok:#65f59a;--bad:#ff6b6b;
+  --bg:#03070d;--panel:#0a1120f2;--line:#1d2e4a;
+  --text:#f0f5ff;--muted:#627b9f;
+  --cyan:#00f3ff;--pink:#ff1f84;--yellow:#ffcf33;
+  --ok:#00ff66;--bad:#ff3b30;
 }
 
 /* ── Reset ─────────────────────────────────────────────────── */
@@ -407,6 +407,21 @@ const countdownText=el('countdownText');
 const canvas=el('gameCanvas'),ctx=canvas.getContext('2d');
 ctx.imageSmoothingEnabled=false;
 
+// ── M3b: resolve CSS palette vars to hex ONCE (canvas 2D can't read var(--x)) ──
+const PAL=(()=>{
+  const cs=getComputedStyle(document.documentElement);
+  const g=n=>(cs.getPropertyValue(n)||'').trim();
+  return {
+    bg:g('--bg')||'#03070d',panel:g('--panel')||'#0a1120',line:g('--line')||'#1d2e4a',
+    text:g('--text')||'#f0f5ff',muted:g('--muted')||'#627b9f',cyan:g('--cyan')||'#00f3ff',
+    pink:g('--pink')||'#ff1f84',yellow:g('--yellow')||'#ffcf33',ok:g('--ok')||'#00ff66',bad:g('--bad')||'#ff3b30'
+  };
+})();
+// M3b telemetry HUD state
+let tachAngle=-2.3, tachVel=0;        // mechanical needle (spring-damper)
+let crtEnabled=true;
+try{const v=localStorage.getItem('octane_crt');if(v!==null)crtEnabled=v==='1';}catch(e){}
+
 // ─── Asset loading with fallback ──────────────────────────────────────────────
 const assetManifest = {
   playerCar: 'assets/cars/player-slickback-coupe.png',
@@ -717,6 +732,7 @@ window.addEventListener('keydown',e=>{
     if(e.code==='KeyA')doUpshift();
     if(e.code==='KeyZ')doDownshift();
     if(e.code==='KeyM')toggleMute();
+    if(e.code==='KeyC'){crtEnabled=!crtEnabled;try{localStorage.setItem('octane_crt',crtEnabled?'1':'0');}catch(e2){}}
   }
 });
 
@@ -1285,6 +1301,27 @@ function updateTelemetry(dt){
   }
 }
 
+// ─── M3b: HUD state (mechanical tach needle + distance-based sector splits) ────
+const SECTOR_LEN=2500, NUM_SECTORS=3;
+function updateHUDState(dt){
+  const p=player;
+  // Mechanical tachometer: needle obeys a = -k·error − c·v (spring-damper → lag+jitter)
+  const rpm=rpmFor(p.speed,p.gear);
+  const tgt=-2.3+Math.min(1,(rpm-RPM_IDLE)/(RPM_REDLINE-RPM_IDLE))*4.0;  // ~230° sweep
+  const acc=-120*(tachAngle-tgt)-14*tachVel;
+  tachVel+=acc*dt;tachAngle+=tachVel*dt;
+  // Sector splits by distance; session-best per sector, flash on cross
+  const sec=Math.floor(p.distance/SECTOR_LEN)%NUM_SECTORS;
+  if(sec!==p.currentSector){
+    const t=p.sectorTimers[p.currentSector]||0,best=p.sectorBest[p.currentSector];
+    p._splitSign=(best===undefined||t<=best)?-1:1;
+    if(best===undefined||t<best)p.sectorBest[p.currentSector]=t;
+    p._splitFlash=1.2;p.currentSector=sec;p.sectorTimers[sec]=0;
+  }
+  p.sectorTimers[p.currentSector]=(p.sectorTimers[p.currentSector]||0)+dt;
+  if(p._splitFlash>0)p._splitFlash-=dt;
+}
+
 function update(dt){
   if(gameState!=='playing')return;
 
@@ -1359,6 +1396,7 @@ function update(dt){
   player.x=Math.max(ROAD_X,Math.min(player.x,ROAD_X+ROAD_W-player.w));
 
   updateTelemetry(dt);   // M3a: G-forces, slip, tyre wear, slipstream
+  updateHUDState(dt);    // M3b: tach needle + sector splits
 
   // ── §5.6 Scoring: passive +10 pts per 100 px travelled ────────────────────────
   const dpx=cameraSpeed*dt;
@@ -1702,7 +1740,96 @@ function draw(){
   });
 
   // HUD (canvas drawn, only when playing)
-  if(gameState==='playing')drawHUD();
+  if(gameState==='playing'){drawHUD();try{drawTelemetryHUD();}catch(e){}}
+  drawCRT();   // M3b CRT overlay (toggle + reduced-motion gated)
+}
+
+// ─── M3b: telemetry cockpit overlay (reads M3a physics; resolved-hex colors) ───
+const MONO='"Fira Code","Courier New",monospace';
+function drawTelemetryHUD(){
+  const p=player;
+  const rpm=rpmFor(p.speed||0,p.gear||1);
+
+  // ── F1 LED shift bar (top centre) ──
+  const N=10,bx=290,by=14,lw=20,gap=4;
+  const rpmF=Math.min(1,Math.max(0,(rpm-RPM_IDLE)/(RPM_REDLINE-RPM_IDLE)));
+  const perfect=rpm>=PERFECT_LO&&rpm<=PERFECT_HI;
+  for(let i=0;i<N;i++){
+    const lit=rpmF>=(i+0.5)/N;
+    let col=PAL.cyan; if(i>=8)col=PAL.ok; else if(i>=6)col=PAL.yellow;
+    if(perfect&&Math.floor(Date.now()/80)%2===0)col=PAL.ok;
+    ctx.fillStyle=lit?col:'rgba(255,255,255,0.08)';
+    if(lit){ctx.shadowBlur=8;ctx.shadowColor=col;}
+    ctx.fillRect(bx+i*(lw+gap),by,lw,9);ctx.shadowBlur=0;
+  }
+
+  // ── G-force polar meter (bottom-left) ──
+  const gx=72,gy=512,gr=38;
+  ctx.strokeStyle=PAL.line;ctx.lineWidth=2;
+  ctx.beginPath();ctx.arc(gx,gy,gr,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(gx-gr,gy);ctx.lineTo(gx+gr,gy);ctx.moveTo(gx,gy-gr);ctx.lineTo(gx,gy+gr);ctx.stroke();
+  const dotx=gx+(p.gForceX||0)*gr*3,doty=gy-(p.gForceY||0)*gr*0.7;
+  ctx.fillStyle=PAL.pink;ctx.shadowBlur=10;ctx.shadowColor=PAL.pink;
+  ctx.beginPath();ctx.arc(dotx,doty,4,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+  ctx.fillStyle=PAL.muted;ctx.font='9px '+MONO;ctx.textAlign='center';ctx.fillText('G-FORCE',gx,gy+gr+14);
+
+  // ── SLIP + TWI readouts (bottom-left, beside G-meter) ──
+  ctx.textAlign='left';ctx.font='12px '+MONO;
+  const slip=p.slipAngle||0;
+  ctx.fillStyle=(Math.abs(slip)>15&&Math.floor(Date.now()/120)%2===0)?PAL.bad:PAL.text;
+  ctx.fillText('SLIP '+(slip>=0?'+':'')+slip.toFixed(1)+'°',128,500);
+  const tw=p.tireWear!==undefined?p.tireWear:100;
+  ctx.fillStyle=tw>60?PAL.ok:tw>30?PAL.yellow:PAL.bad;
+  ctx.fillText('TWI  '+tw.toFixed(1)+'%',128,520);
+  ctx.fillStyle=PAL.muted;ctx.fillText('DRAFT x'+(p.draftMultiplier||1).toFixed(2),128,540);
+
+  // ── Sector splits (top-left under the LED bar) ──
+  ctx.font='10px '+MONO;ctx.textAlign='left';
+  for(let i=0;i<NUM_SECTORS;i++){
+    const best=p.sectorBest&&p.sectorBest[i];
+    let col=PAL.muted;
+    if(i===p.currentSector&&p._splitFlash>0)col=(p._splitSign<0)?PAL.ok:PAL.bad;
+    else if(best!==undefined)col=PAL.cyan;
+    ctx.fillStyle=col;
+    ctx.fillText('S'+(i+1)+' '+(best!==undefined?best.toFixed(1):'--.-'),210,500+i*15);
+  }
+
+  // ── Mechanical tachometer (bottom-right, spring-damper needle) ──
+  const tx=712,ty=508,tr=58;
+  ctx.fillStyle='rgba(3,7,13,0.7)';ctx.beginPath();ctx.arc(tx,ty,tr+6,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle=PAL.line;ctx.lineWidth=2;ctx.beginPath();ctx.arc(tx,ty,tr,0,Math.PI*2);ctx.stroke();
+  // redline arc
+  ctx.strokeStyle=PAL.bad;ctx.lineWidth=4;
+  ctx.beginPath();ctx.arc(tx,ty,tr-4,-2.3+ (Math.min(1,(PERFECT_LO-RPM_IDLE)/(RPM_REDLINE-RPM_IDLE)))*4.0,1.7);ctx.stroke();
+  // ticks
+  ctx.strokeStyle=PAL.muted;ctx.lineWidth=1;
+  for(let i=0;i<=10;i++){const a=-2.3+i/10*4.0;ctx.beginPath();ctx.moveTo(tx+Math.cos(a)*(tr-2),ty+Math.sin(a)*(tr-2));ctx.lineTo(tx+Math.cos(a)*(tr-9),ty+Math.sin(a)*(tr-9));ctx.stroke();}
+  // needle
+  const na=tachAngle;
+  ctx.strokeStyle=(rpm>=PERFECT_LO)?PAL.ok:PAL.cyan;ctx.lineWidth=2.5;ctx.shadowBlur=8;ctx.shadowColor=ctx.strokeStyle;
+  ctx.beginPath();ctx.moveTo(tx,ty);ctx.lineTo(tx+Math.cos(na)*(tr-8),ty+Math.sin(na)*(tr-8));ctx.stroke();ctx.shadowBlur=0;
+  ctx.fillStyle=PAL.text;ctx.font='11px '+MONO;ctx.textAlign='center';
+  ctx.fillText(Math.round(rpm),tx,ty+tr-12);ctx.fillText('RPM',tx,ty-tr+16);
+  ctx.textAlign='left';
+}
+
+// ── M3b: CRT overlay (CSS/2D only, no WebGL) — scanlines, vignette, subtle CA ──
+function drawCRT(){
+  if(!crtEnabled||reduceMotion)return;
+  const W=canvas.width,H=canvas.height;
+  ctx.save();
+  // subtle chromatic aberration: re-draw the frame edges offset, very low alpha
+  ctx.globalAlpha=0.06;ctx.globalCompositeOperation='screen';
+  ctx.drawImage(canvas,-1.4,0);ctx.drawImage(canvas,1.4,0);
+  ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
+  // scanlines
+  ctx.fillStyle='rgba(0,0,0,0.16)';
+  for(let y=0;y<H;y+=3)ctx.fillRect(0,y,W,1);
+  // vignette
+  const g=ctx.createRadialGradient(W/2,H/2,H*0.35,W/2,H/2,H*0.75);
+  g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,0.45)');
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  ctx.restore();
 }
 
 function drawHUD(){
