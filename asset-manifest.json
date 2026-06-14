@@ -283,6 +283,81 @@
         "sprite"
       ],
       "status": "integrated"
+    },
+    {
+      "id": "splash_01",
+      "type": "splash-frame",
+      "path": "assets/splash/splash_01.jpg",
+      "description": "Rotating title-screen splash frame 01 (inlined in splashFrames as base64).",
+      "license": "user-provided; project use approved by owner",
+      "source": "User-provided synthwave splash art",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "splash",
+        "title",
+        "background"
+      ],
+      "status": "integrated"
+    },
+    {
+      "id": "splash_02",
+      "type": "splash-frame",
+      "path": "assets/splash/splash_02.jpg",
+      "description": "Rotating title-screen splash frame 02 (inlined in splashFrames as base64).",
+      "license": "user-provided; project use approved by owner",
+      "source": "User-provided synthwave splash art",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "splash",
+        "title",
+        "background"
+      ],
+      "status": "integrated"
+    },
+    {
+      "id": "splash_05",
+      "type": "splash-frame",
+      "path": "assets/splash/splash_05.jpg",
+      "description": "Rotating title-screen splash frame 05 (inlined in splashFrames as base64).",
+      "license": "user-provided; project use approved by owner",
+      "source": "User-provided synthwave splash art",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "splash",
+        "title",
+        "background"
+      ],
+      "status": "integrated"
+    },
+    {
+      "id": "splash_07",
+      "type": "splash-frame",
+      "path": "assets/splash/splash_07.jpg",
+      "description": "Rotating title-screen splash frame 07 (inlined in splashFrames as base64).",
+      "license": "user-provided; project use approved by owner",
+      "source": "User-provided synthwave splash art",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "splash",
+        "title",
+        "background"
+      ],
+      "status": "integrated"
+    },
+    {
+      "id": "splash_09",
+      "type": "splash-frame",
+      "path": "assets/splash/splash_09.jpg",
+      "description": "Rotating title-screen splash frame 09 (inlined in splashFrames as base64).",
+      "license": "user-provided; project use approved by owner",
+      "source": "User-provided synthwave splash art",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "splash",
+        "title",
+        "background"
+      ],
+      "status": "integrated"
     }
   ],
   "deferred": [
