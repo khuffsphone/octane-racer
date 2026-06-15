@@ -1,5 +1,42 @@
 # Octane Racer — Progress Log
 
+## Screen art — synthwave backdrops behind title/menu, game-over, leaderboard, new-high-score
+Branch: `agent-claude/screen-art` (off `main`)
+
+### Done
+1. **4 backdrops inlined** in `assetManifest` (`screenTitle/Gameover/Leaderboard/Victory`) as
+   base64 JPEGs — chosen from the 20 supplied renders by measuring luminance in each screen's
+   exact text region (darkest-where-text-goes wins): title = retro-sun synthwave grid; gameover
+   = stormy neon skyline; leaderboard = car-left with a dark right column; victory = neon-arch
+   spark burst. Cover-fit 800×600, JPEG q74, loaded by the existing asset loop.
+2. **Per-screen backdrop + scrim** applied by `applyScreenBackdrops()` (called after assets load
+   and from `showScreen`): each overlay's background = a directional scrim gradient layered over
+   the image (top-heavy for title/gameover/victory so upper text reads; right-heavy for the
+   leaderboard so the list column reads). If an image didn't load, the overlay keeps its
+   gradient/`#0a0a14` base — the **procedural fallback**.
+3. **Title/menu**: `screenTitle` on the splash (now `has-art`, logo + prompt in the dark upper
+   band) and the menu (replaces the garage bg).
+4. **Game over**: `screenGameover` with GAME OVER + run-stats in the dark upper area.
+5. **New high score**: `updateGameOverArt(true)` swaps the gameover backdrop to `screenVictory`
+   and adds `victory-mode` (banner + initials float top-centre) when a record is set; reverts
+   to `screenGameover` otherwise.
+6. **Leaderboard**: `screenLeaderboard` with the top-5 table pinned to the dark right column.
+
+### Verification (headless — no browser here)
+- `node --check` clean; headless boot OK. With the mock `Image` forcing failures, the fallback
+  path runs cleanly (no crash, overlays keep their gradient) — confirms graceful degradation.
+- Image picks validated by per-region luminance + a rendered scrim preview (text legible in
+  each screen's dark zone).
+- **Pending manual/browser QA:** actual on-screen look of each backdrop + scrim and text
+  contrast (CSS background rendering is browser-only here).
+
+### Budget
+4 backdrops ≈ 205 KB JPEG / **+275.9 KB** base64 inlined. Shipped footprint (referenced asset
+files + inlined base64) **2.24 MB / 3 MB** — under budget but tightening (~0.76 MB headroom);
+flagging per the brief. `index.html` 1.01 MB → 1.30 MB.
+
+---
+
 ## Milestone 3G — Sim-Physics v2: aero drag + KERS + thermal
 Branch: `agent-claude/m3g-sim-physics` (off fresh `main`, after #8/#10/#9/#11 merged)
 
