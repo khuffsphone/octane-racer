@@ -99,6 +99,56 @@ Branch: `agent-claude/impact-juice` (off `main`)
 
 ---
 
+## M3d — Touch controls: drag wheel (left) + brake/gas/shift (right)
+Branch: `agent-claude/m3d-touch-controls` (off `main`)
+
+### Done
+1. **Overlay** replaces the old D-pad. Bottom-left: the attached `wheel.png` (256×256,
+   quantized, inlined as a base64 data URI in `#wheelImg`) with a procedural KERS/nitro
+   **ring** + **T** hub drawn on top (`#wheelHud` canvas + `#btnT`). Right: `▲`/`▼` shift
+   paddles + `BRAKE` + `GAS`, all CSS-vector. Shown only when touch is detected
+   (`matchMedia('(pointer:coarse)')` / `ontouchstart` / `maxTouchPoints`) **and** racing
+   (`body.touch.racing`), so it never covers menus.
+2. **Steering wheel** — one captured `pointerId`; relative horizontal drag → `touchSteer`
+   ∈ [-1,1] (`±70px` = full lock), self-centers toward 0 on release (~0.35s). The wheel
+   **image rotates by `steerNormalized * 120°`** each frame (hub at image center). A new
+   analog channel folds into the existing steer block (`max-magnitude` of touch vs gamepad);
+   keyboard arrows + gamepad stick are unchanged.
+3. **Pedals / paddles / turbo** — `GAS`→`ArrowUp`, `BRAKE`→`ArrowDown` (held, pointer
+   capture so a slide-off still releases). `▲`/`▼`→`doUpshift()/doDownshift()` (one per tap).
+   `T`→nitro (`keys.Space`) always, **plus KERS deploy (`keys.KeyK`) only if `KersSystem`
+   exists** — branch is off current main (no #12), so T is nitro-only, the expected fallback;
+   the KERS ring/deploy light up for free once #12 lands.
+4. **Multitouch** — each control owns its own `pointerId` + `setPointerCapture`, so a left
+   thumb steers while a right thumb holds gas. `touch-action:none` + `preventDefault` on the
+   overlay kill scroll/zoom/double-tap.
+5. **Desktop/keyboard/gamepad untouched**; overlay is additive and touch-only.
+
+### Verification (headless — no browser here)
+- `node --check` clean; headless boot OK on both desktop and touch device profiles (no errors).
+- No residual old-control references (`btn-up/down/left/right/nitro`, `ctrl-btn`, `bindTouch`).
+- Steer-math checks: drag +35px→0.50, +90px→clamp 1.0, −50px→−0.71; self-center 1→0 in 21
+  frames (0.35s); channel combine prefers the larger magnitude; deadzone gating + rotation
+  (steerNorm 0.8 → 96°); wheel data URI confirmed inlined.
+- **Pending manual/device QA:** on-device multitouch feel, wheel rotation/self-center, and
+  whether `±70px` drag range feels right per screen size.
+
+### Assumptions logged
+- `control_overlay_mockup.svg` was never provided; per the follow-up I used `wheel.png` as the
+  wheel image (rotated by `steerNormalized`, hub at center, KERS ring + T procedurally on top)
+  and kept the pedals/shifter as CSS-vector.
+- Wheel resized 360→256 and palette-quantized (64 colors, alpha preserved) to cut the inline
+  payload from 118 KB → ~46 KB.
+- Steer mapping = relative horizontal drag (most robust without on-device playtest), not polar
+  angle; tunable via `RANGE`/`WHEEL_MAX_DEG`.
+- Did **not** merge #12 (per instruction — that's your browser QA + merge).
+
+### Build size
+`index.html` **+64.94 KB** (≈46 KB inlined wheel image + ≈4 KB code/CSS; net of removing the
+old D-pad markup/CSS).
+
+---
+
 ## Milestone 3E — deterministic fixed-timestep loop + player steer sprites
 Branch: `agent-claude/m3e-fixed-loop` (off `main`)
 
