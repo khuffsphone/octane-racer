@@ -1311,6 +1311,167 @@ function drawDecalPrimitive(d){
   }
 }
 
+// ════════════════════════════════════════════════════════════════════════════════
+// IMPACT / JUICE SYSTEM — one applyImpact(x,y,severity,type) that ALL collision and
+// scrape events route through. Severity-scaled, capped, fast-decaying — subtle by design.
+// Tunables live in IMPACT; the live state lives in impactState. severity ∈ [0,1];
+// type ∈ 'scrape' | 'sideswipe' | 'crash' | 'gameover'.
+// ════════════════════════════════════════════════════════════════════════════════
+const IMPACT={
+  shakeScrapeMax:3, shakeCrashMax:10,      // px amplitude caps (scrape → crash)
+  shakeDecay:0.20,                         // s ease-out
+  hitstopThresh:0.6, hitstopMaxFrames:3,   // freeze 1..3 frames at/above threshold
+  flashAlphaMax:0.16, flashDecay:0.15,     // *severity; white scrape / orange crash
+  vignetteRageMax:0.16,                    // warm edge tint at full rage
+  sparkScrape:8, debrisCrash:14, smokeCrash:6,   // particle counts (+ ×severity)
+  scrapeDecalCap:14, scrapeDecalDur:3.0, grindEvery:0.06,  // grind streak pacing
+  rageStartTier:2, rageGain:1.4, rageDecay:0.6,  // combo-driven "rage" build
+  crunchGain:0.4,                          // base audio crunch level
+  trafficSpinSoft:3.0, trafficSpinHard:7.5,
+  trafficShoveSoft:90, trafficShoveHard:220,
+  swipeSpeedMin:20, swipeHardSpeed:110, swipeCool:0.3
+};
+const impactState={
+  shakeMag:0, shakeT:0, shakeX:0, shakeY:0,
+  hitstop:0,
+  flashAlpha:0, flashT:0, flashX:400, flashY:300, flashColor:'#fff',
+  rage:0, _grindCool:0
+};
+function resetImpactState(){
+  impactState.shakeMag=impactState.shakeT=impactState.shakeX=impactState.shakeY=0;
+  impactState.hitstop=0;impactState.flashAlpha=impactState.flashT=0;impactState.rage=0;impactState._grindCool=0;
+}
+function severityFromSpeed(spd){return Math.max(0.18,Math.min(1,spd/150));}
+function hexA(hex,a){
+  const h=hex.replace('#','');const n=parseInt(h.length===3?h.replace(/(.)/g,'$1$1'):h,16);
+  return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
+}
+
+// The orchestrator. Pure juice — gameplay consequences (fuel/combo/invuln) stay in the
+// collision handlers that CALL this.
+function applyImpact(x,y,severity,type){
+  severity=severity<0?0:severity>1?1:severity;
+  const heavy=(type==='crash'||type==='gameover');
+  if(!reduceMotion){
+    const mag=(heavy?IMPACT.shakeCrashMax:IMPACT.shakeScrapeMax)*severity;
+    if(mag>impactState.shakeMag)impactState.shakeMag=mag;   // strongest concurrent wins
+    impactState.shakeT=IMPACT.shakeDecay;
+  }
+  if(!reduceMotion&&heavy&&severity>=IMPACT.hitstopThresh){   // freeze only on solid hits, not scrapes/grinds
+    const f=1+Math.round((IMPACT.hitstopMaxFrames-1)*((severity-IMPACT.hitstopThresh)/(1-IMPACT.hitstopThresh)));
+    if(f>impactState.hitstop)impactState.hitstop=f;
+  }
+  impactState.flashColor=heavy?'#ff5a1e':'#ffffff';
+  impactState.flashX=x;impactState.flashY=y;
+  impactState.flashAlpha=IMPACT.flashAlphaMax*severity;
+  impactState.flashT=IMPACT.flashDecay;
+  emitImpactBurst(x,y,severity,type);
+  impactCrunch(severity,heavy);
+  if(heavy)impactState.rage=0;            // a real crash kills the rage build
+}
+
+// Particle burst — routes through the 3F ParticlePool if it lands later, else the
+// existing emitter (so it upgrades for free).
+function emitImpactBurst(x,y,sev,type){
+  if(typeof particlePool!=='undefined'&&particlePool&&typeof particlePool.emitBurst==='function'){
+    particlePool.emitBurst(x,y,sev,type);return;
+  }
+  if(type==='crash'||type==='gameover'){
+    createParticles(x,y,'#ff7a1e',Math.round(8+IMPACT.debrisCrash*sev));
+    createParticles(x,y,'#9a9aa2',Math.round(4+IMPACT.smokeCrash*sev));
+    spawnFX('fxSmoke',x,y,{dur:0.6,size:40+24*sev,grow:24,spin:1.5});
+    if(type==='gameover')spawnFX('fxExplosion',x,y,{dur:0.5,size:64,grow:60}); // the one big moment
+  }else{
+    createParticles(x,y,'#ffd27f',Math.round(4+IMPACT.sparkScrape*sev));
+    spawnFX('fxSparks',x,y,{dur:0.3,size:24+22*sev});
+  }
+}
+
+// Short crunch from the 3C synth (self-guards if audio is off/absent).
+function impactCrunch(sev,heavy){
+  if(typeof playNoise!=='function')return;
+  playNoise(0.10+0.18*sev,(heavy?0.22:0.12)+0.28*sev);
+  if(typeof playTone==='function')playTone((heavy?80:150)+(1-sev)*60,0.14+0.14*sev,'sawtooth',IMPACT.crunchGain*(0.5+0.5*sev),0.02);
+}
+
+// Sustained grind → fading dark streak on the road (pooled in decals[], capped separately).
+function grindScrape(x,y,dt){
+  impactState._grindCool-=dt;
+  if(impactState._grindCool>0)return;
+  impactState._grindCool=IMPACT.grindEvery;
+  let n=0;for(const d of decals)if(d._scrape)n++;
+  if(n>=IMPACT.scrapeDecalCap)return;
+  decals.push({type:'skid',x,y,life:0,dur:IMPACT.scrapeDecalDur,size:18,rot:0,alpha:0.45,_scrape:true});
+  if(decals.length>80)decals.splice(0,20);
+}
+
+// Glancing contact: shove + spin the traffic car, scrub the player, spark + streak.
+function sideswipeTraffic(e,ix,iy){
+  const spd=player.speed,sev=Math.max(0.3,Math.min(0.85,spd/150));
+  const hard=spd>=IMPACT.swipeHardSpeed;
+  const side=((player.x+player.w/2)<(e.x+e.w/2))?1:-1;   // car is to player's right → shove right
+  e.spin=(e.spin||0)+side*(hard?IMPACT.trafficSpinHard:IMPACT.trafficSpinSoft);
+  e.vx=(e.vx||0)+side*(hard?IMPACT.trafficShoveHard:IMPACT.trafficShoveSoft);
+  e.spinTimer=Math.max(e.spinTimer||0,hard?1.4:0.7);
+  e.offLane=hard;                                          // hard hit spins it off-lane
+  e.swipeCool=IMPACT.swipeCool;
+  player.speed*=0.82;player.x-=side*6;                     // scrub + nudge away (no dead stop)
+  player.multiplier=1;
+  player.fuel=Math.max(0,player.fuel-4);
+  applyImpact(ix,iy,sev,'sideswipe');
+  grindScrape(player.x+player.w/2,player.y+player.h-4,IMPACT.grindEvery+1);
+}
+
+// Per-frame decay of shake/flash + the combo-driven rage build. Skipped during hit-stop.
+function decayImpact(dt){
+  if(impactState.shakeT>0){
+    impactState.shakeT-=dt;
+    const k=Math.max(0,impactState.shakeT/IMPACT.shakeDecay);
+    const amp=impactState.shakeMag*k;                      // linear ease-out
+    impactState.shakeX=(Math.random()*2-1)*amp;
+    impactState.shakeY=(Math.random()*2-1)*amp;
+    if(impactState.shakeT<=0){impactState.shakeMag=impactState.shakeX=impactState.shakeY=0;}
+  }
+  if(impactState.flashT>0){impactState.flashT-=dt;if(impactState.flashT<0)impactState.flashT=0;}
+  const tier=player.multiplier-IMPACT.rageStartTier;
+  const target=tier<=0?0:Math.min(1,tier/(5-IMPACT.rageStartTier));
+  const rate=target>impactState.rage?IMPACT.rageGain:IMPACT.rageDecay;
+  impactState.rage+=(target-impactState.rage)*Math.min(1,rate*dt);
+}
+
+// Screen-space overlay: impact flash + edge vignette, then the rage tint + speed-lines.
+function drawImpactOverlay(){
+  const W=800,H=600;
+  if(impactState.flashT>0){
+    const a=impactState.flashAlpha*(impactState.flashT/IMPACT.flashDecay);
+    if(a>0.002){
+      const fx=impactState.flashX,fy=impactState.flashY,col=impactState.flashColor;
+      const g=ctx.createRadialGradient(fx,fy,0,fx,fy,520);
+      g.addColorStop(0,hexA(col,a));g.addColorStop(1,hexA(col,0));
+      ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+      const v=ctx.createRadialGradient(W/2,H/2,H*0.34,W/2,H/2,H*0.78);
+      v.addColorStop(0,hexA(col,0));v.addColorStop(1,hexA(col,a*0.9));
+      ctx.fillStyle=v;ctx.fillRect(0,0,W,H);
+    }
+  }
+  const r=impactState.rage;
+  if(r>0.02&&!reduceMotion){
+    const v=ctx.createRadialGradient(W/2,H/2,H*0.30,W/2,H/2,H*0.80);
+    v.addColorStop(0,'rgba(255,80,0,0)');
+    v.addColorStop(1,`rgba(255,60,0,${(IMPACT.vignetteRageMax*r).toFixed(3)})`);
+    ctx.fillStyle=v;ctx.fillRect(0,0,W,H);
+    ctx.save();
+    ctx.globalAlpha=0.08+0.16*r;ctx.strokeStyle='rgba(255,214,170,0.9)';ctx.lineWidth=2;
+    const len=20+60*r,scroll=(Date.now()/2)%80;
+    for(let i=0;i<6;i++){
+      const yy=((i*100+scroll)%(H+100))-50;
+      ctx.beginPath();ctx.moveTo(ROAD_X-22,yy);ctx.lineTo(ROAD_X-22,yy+len);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(ROAD_X+ROAD_W+22,yy+40);ctx.lineTo(ROAD_X+ROAD_W+22,yy+40+len);ctx.stroke();
+    }
+    ctx.restore();ctx.globalAlpha=1;
+  }
+}
+
 // ─── Phase 3: obstacles (collide like traffic; procedural striped barrier) ─────
 function drawObstacle(x,y,w,h){
   ctx.save();ctx.translate(x,y);
@@ -1414,6 +1575,7 @@ function initGame(){
   // M3G: reset sim-physics v2 state (cold engine & tyres, empty KERS) for a fresh run.
   thermal.engineTemp=thermal.ambient;thermal.tyreTemp=thermal.ambient;
   kers.charge=0;kers.isDeploying=false;
+  resetImpactState();   // clear shake/flash/hitstop/rage for a fresh run
   scenery=[];
   // §5.5 weather machine: sunny45 → warning5 → rain30 → clearing10 (90s loop).
   weather={state:'sunny',timer:45,intensity:0,drops:[]};
@@ -1466,42 +1628,35 @@ function spawnEntity(){
 // Game over only when the tank empties (or a collision with the tank already empty).
 function handleCrash(isSpinout=false){
   if(player.fuel<=0){endRun();return;}
+  const sev=severityFromSpeed(player.speed);      // capture before zeroing
+  const px=player.x+16,py=player.y+24;
   player.speed=0;cameraSpeed=0;
   player.invulnerable=2.5;
   player.multiplier=1;            // §5.6 reset combo on any hit
   player.fuel=Math.max(0,player.fuel-20);
-  sfxCrash();
   if(isSpinout){
     player.spinAngle=Math.PI*4;
-    createParticles(player.x+16,player.y+16,'#fff',20);
     floatingTexts.push({text:'SPINOUT! -20 FUEL',x:player.x+16,y:player.y-20,timer:1.5,color:'#ff6b6b'});
-    spawnFX('fxSmoke',player.x+16,player.y+16,{dur:0.6,size:48,grow:24,spin:1.5});
+    applyImpact(px,py,Math.max(0.55,sev),'crash');   // all crash juice routes through applyImpact
   }else{
-    createParticles(player.x+16,player.y+16,'#ff4500',30);
     floatingTexts.push({text:'CRASH! -20 FUEL',x:player.x+16,y:player.y-20,timer:1.5,color:'#ff6b6b'});
-    spawnFX('fxExplosion',player.x+16,player.y+24,{dur:0.45,size:46,grow:46});
+    applyImpact(px,py,Math.max(0.65,sev),'crash');
   }
-  // Phase 3: stamp lasting marks at the impact point (cosmetic, scrolls + fades)
+  // Phase 3: lasting aftermath marks at the impact point (persistent decals, scroll + fade)
   spawnDecal('scorch',player.x+16,player.y+24,{size:44,dur:2.0,alpha:0.7});
   spawnDecal('oil',player.x+16,player.y+34,{size:30,dur:2.0,alpha:0.6});
   spawnDecal('debris',player.x+16,player.y+24,{size:40,dur:2.0,alpha:0.7});
-  // Screen shake (skipped under prefers-reduced-motion)
-  if(!reduceMotion){
-    canvas.style.transform='translate(5px,5px)';
-    setTimeout(()=>canvas.style.transform='translate(-5px,-5px)',50);
-    setTimeout(()=>canvas.style.transform='translate(5px,-5px)',100);
-    setTimeout(()=>canvas.style.transform='translate(0,0)',150);
-  }
   if(player.fuel<=0)endRun();
 }
 // Hydroplane: §5.5 360° spin for 1.2s, steering ignored; resets the combo, no fuel cost.
 function handleHydroplane(){
   if(player.invulnerable>0||player.spinLock>0)return;
   player.spinAngle=Math.PI*2;player.spinLock=1.2;player.multiplier=1;
-  createParticles(player.x+16,player.y+16,'#00bcff',16);
+  createParticles(player.x+16,player.y+16,'#00bcff',16);   // themed blue spray (kept)
   spawnFX('fxSmoke',player.x+16,player.y+16,{dur:0.7,size:50,grow:28,spin:2});
   floatingTexts.push({text:'HYDROPLANE!',x:player.x+16,y:player.y-20,timer:1.2,color:'#00bcff'});
   sfxHydroplaneSound();
+  applyImpact(player.x+16,player.y+24,0.45,'sideswipe');   // shake/flash via the orchestrator
 }
 function endRun(){
   if(player.finished)return;
@@ -1570,6 +1725,10 @@ function update(dt){
   for(const e of entities){e.prevX=e.x;e.prevY=e.y;}
   prevBgOffsetY=bgOffsetY;
   if(gameState!=='playing')return;
+
+  // Hit-stop: freeze the sim for 1..3 frames after a solid impact (render still runs).
+  if(impactState.hitstop>0){impactState.hitstop--;return;}
+  decayImpact(dt);   // shake/flash ease-out + combo-driven rage build
 
   // Poll gamepad
   pollGamepad();
@@ -1801,24 +1960,48 @@ function update(dt){
     e.y-=relSpeed*dt;
 
     if(e.type==='traffic'){
-      // Lane-switching AI: check roughly every 1.0s, more often as difficulty rises.
-      if(e.switchTimer>0){e.switchTimer-=dt;}
-      else if(e.y<200&&Math.random()<0.3+difficulty*0.4){
-        const dir=Math.random()>0.5?1:-1;
-        const nl=e.lane+dir;
-        if(nl>=0&&nl<LANES&&laneOpenAtTop(nl)){      // never merge into an occupied lane
-          e.lane=nl;e.switchTimer=1.0;
-          createParticles(e.x+16,e.y+e.h,'#ccc',10);
-        }else{e.switchTimer=1.0;}
+      if(e.swipeCool>0)e.swipeCool-=dt;
+      if((e.spinTimer||0)>0){
+        // Sideswiped: free-spinning + shoved; lane-AI is suppressed until it settles.
+        e.spinTimer-=dt;
+        e.x+=(e.vx||0)*dt; e.vx=(e.vx||0)*(1-Math.min(1,3*dt));
+        e.yaw=(e.yaw||0)+(e.spin||0)*dt; e.spin=(e.spin||0)*(1-Math.min(1,2*dt));
+        if(!e.offLane)e.yaw*=(1-Math.min(1,2.5*dt));     // soft hits straighten back up
+        if(e.spinTimer<=0){                               // re-acquire the nearest lane
+          e.lane=Math.max(0,Math.min(LANES-1,Math.round((e.x+16-ROAD_X)/LANE_W-0.5)));
+          e.offLane=false;e.switchTimer=0.6;
+        }
+      }else{
+        if(e.yaw)e.yaw*=(1-Math.min(1,5*dt));
+        // Lane-switching AI: check roughly every 1.0s, more often as difficulty rises.
+        if(e.switchTimer>0){e.switchTimer-=dt;}
+        else if(e.y<200&&Math.random()<0.3+difficulty*0.4){
+          const dir=Math.random()>0.5?1:-1;
+          const nl=e.lane+dir;
+          if(nl>=0&&nl<LANES&&laneOpenAtTop(nl)){      // never merge into an occupied lane
+            e.lane=nl;e.switchTimer=1.0;
+            createParticles(e.x+16,e.y+e.h,'#ccc',10);
+          }else{e.switchTimer=1.0;}
+        }
+        const targetX=laneCenter(e.lane)-16;
+        e.x+=(targetX-e.x)*4*dt;
       }
-      const targetX=laneCenter(e.lane)-16;
-      e.x+=(targetX-e.x)*4*dt;
     }
 
     if(player.invulnerable<=0){
-      // Collision
+      // Collision — classify glancing traffic sideswipes/grinds vs solid crashes.
       if(player.x<e.x+e.w&&player.x+player.w>e.x&&player.y<e.y+e.h&&player.y+player.h>e.y){
-        handleCrash(false);
+        const ox=Math.min(player.x+player.w,e.x+e.w)-Math.max(player.x,e.x);   // horiz penetration
+        const oy=Math.min(player.y+player.h,e.y+e.h)-Math.max(player.y,e.y);   // vert penetration
+        const glancing=(e.type==='traffic'&&ox<player.w*0.5&&oy>ox);            // shallow side contact
+        const ix=Math.max(player.x,e.x)+ox/2, iy=Math.max(player.y,e.y)+oy/2;
+        if(glancing&&player.speed>IMPACT.swipeSpeedMin&&(e.swipeCool||0)<=0){
+          sideswipeTraffic(e,ix,iy);                       // shove+spin the car, scrub the player
+        }else if(glancing){
+          grindScrape(player.x+player.w/2,player.y+player.h-4,dt); // sustained grind → streaks
+        }else{
+          handleCrash(false);                              // head-on / obstacle / deep overlap
+        }
       }
       // §5.6 Near-miss: lateral edge gap 12–35 px → +100×multiplier, chain to ×5.
       if(e.type==='traffic'&&!e.passed&&e.y>player.y+player.h){
@@ -1969,7 +2152,7 @@ function draw(){
   // Traffic entities
   entities.forEach(e=>{
     if(e.type==='obstacle'){drawObstacle(e.x,e.y,e.w,e.h);return;}
-    drawCar(e.x,e.y,e.w,e.h,e.color,false,0,e.assetKey||null);
+    drawCar(e.x,e.y,e.w,e.h,e.color,false,e.yaw||0,e.assetKey||null);   // yaw from sideswipe spin
     // Turn signal blink when switching
     if(e.switchTimer>0&&e.switchTimer<0.5){
       ctx.fillStyle='yellow';
@@ -2280,7 +2463,12 @@ function render(alpha){
   const saved=[];
   for(const e of entities){saved.push([e.x,e.y]);if(e.prevX!==undefined){e.x=lerp(e.prevX,e.x,alpha);e.y=lerp(e.prevY,e.y,alpha);}}
   const bo=bgOffsetY;if(typeof prevBgOffsetY==='number')bgOffsetY=lerp(prevBgOffsetY,bgOffsetY,alpha);
+  // Impact screen-shake: offset the whole frame; pre-fill so the revealed edge stays dark.
+  const shaking=(impactState.shakeX||impactState.shakeY);
+  if(shaking){ctx.fillStyle='#0a0a12';ctx.fillRect(0,0,800,600);ctx.save();ctx.translate(impactState.shakeX,impactState.shakeY);}
   draw();
+  if(shaking)ctx.restore();
+  drawImpactOverlay();   // flash/vignette/rage in screen space (not shaken)
   player.x=pX;player.y=pY;
   entities.forEach((e,i)=>{e.x=saved[i][0];e.y=saved[i][1];});
   bgOffsetY=bo;
@@ -2321,6 +2509,7 @@ function startGame(){
 }
 
 function triggerGameOver(){
+  applyImpact(player.x+16,player.y+24,1.0,'gameover');   // the one reserved big-explosion moment
   gameState='gameover';
   stopMusic();   // M3c: stop backing track on game over
   el('final-score').textContent=Math.floor(player.score);
