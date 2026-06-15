@@ -375,6 +375,70 @@
         "control"
       ],
       "status": "integrated"
+    },
+    {
+      "id": "screen-title",
+      "type": "screen-backdrop",
+      "path": "assets/screens/title.jpg",
+      "description": "Title/menu backdrop — retro-sun synthwave grid with a streaking car; OCTANE logo sits in the dark upper band. (cover-fit 800x600, JPEG q74, inlined as base64 in assetManifest; procedural gradient fallback on load failure).",
+      "license": "user-provided; project use approved by owner",
+      "source": "User-provided synthwave backdrop render",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "screen",
+        "backdrop",
+        "synthwave",
+        "ui"
+      ],
+      "status": "integrated"
+    },
+    {
+      "id": "screen-gameover",
+      "type": "screen-backdrop",
+      "path": "assets/screens/gameover.jpg",
+      "description": "Game-over backdrop — red coupe under a stormy neon skyline; GAME OVER + run stats sit in the dark upper area. (cover-fit 800x600, JPEG q74, inlined as base64 in assetManifest; procedural gradient fallback on load failure).",
+      "license": "user-provided; project use approved by owner",
+      "source": "User-provided synthwave backdrop render",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "screen",
+        "backdrop",
+        "synthwave",
+        "ui"
+      ],
+      "status": "integrated"
+    },
+    {
+      "id": "screen-leaderboard",
+      "type": "screen-backdrop",
+      "path": "assets/screens/leaderboard.jpg",
+      "description": "Leaderboard backdrop — car at left on a neon grid; the top-5 list sits in the dark right-hand column. (cover-fit 800x600, JPEG q74, inlined as base64 in assetManifest; procedural gradient fallback on load failure).",
+      "license": "user-provided; project use approved by owner",
+      "source": "User-provided synthwave backdrop render",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "screen",
+        "backdrop",
+        "synthwave",
+        "ui"
+      ],
+      "status": "integrated"
+    },
+    {
+      "id": "screen-victory",
+      "type": "screen-backdrop",
+      "path": "assets/screens/victory.jpg",
+      "description": "New-high-score backdrop — celebratory neon-arch spark burst; NEW HIGH SCORE banner + initials sit top-centre. (cover-fit 800x600, JPEG q74, inlined as base64 in assetManifest; procedural gradient fallback on load failure).",
+      "license": "user-provided; project use approved by owner",
+      "source": "User-provided synthwave backdrop render",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "screen",
+        "backdrop",
+        "synthwave",
+        "ui"
+      ],
+      "status": "integrated"
     }
   ],
   "deferred": [
