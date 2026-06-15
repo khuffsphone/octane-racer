@@ -252,10 +252,11 @@ button:disabled{filter:grayscale(.4) brightness(.7);cursor:not-allowed}
         <span style="color:var(--yellow)">← / →</span> steer<br/>
         <span style="color:var(--yellow)">A</span> shift up &nbsp;
         <span style="color:var(--yellow)">Z</span> shift down<br/>
-        <span style="color:var(--yellow)">Space</span> nitro &nbsp; <span style="color:var(--yellow)">M</span> mute<br/>
+        <span style="color:var(--yellow)">Space</span> nitro &nbsp; <span style="color:var(--yellow)">K</span> KERS boost &nbsp; <span style="color:var(--yellow)">M</span> mute<br/>
         Perfect shift at 9–9.5k RPM. Near misses build a x5 combo.<br/>
         Fuel is your timer — grab gas cans, mind the rain.<br/>
-        <span style="color:var(--muted)">Gamepad: LStick steer · RT/A accel · LT/B brake · X nitro</span>
+        Brake to charge KERS; hold K to deploy it. Engine &amp; tyres heat up — keep them in the zone.<br/>
+        <span style="color:var(--muted)">Gamepad: LStick steer · RT/A accel · LT/B brake · X nitro · RB KERS</span>
       </div>
     </section>
 
@@ -799,7 +800,7 @@ try{const sv=localStorage.getItem('octane_sound');if(sv==='1')soundEnabled=true;
 
 // ─── Gamepad ─────────────────────────────────────────────────────────────────
 const DEADZONE=0.15;
-let gpState={steer:0,accel:false,brake:false,boost:false};
+let gpState={steer:0,accel:false,brake:false,boost:false,kers:false};
 window.addEventListener('gamepadconnected',e=>{
   el('gamepadStatus').textContent='Gamepad: connected — '+(e.gamepad.id||'unknown').slice(0,30);
   el('gamepadStatus').style.color='var(--ok)';
@@ -813,17 +814,18 @@ function pollGamepad(){
   const pads=navigator.getGamepads();
   let pad=null;
   for(let i=0;i<pads.length;i++){if(pads[i]?.connected){pad=pads[i];break;}}
-  if(!pad){gpState={steer:0,accel:false,brake:false,boost:false};return;}
+  if(!pad){gpState={steer:0,accel:false,brake:false,boost:false,kers:false};return;}
   const ax=pad.axes[0]||0;
   gpState.steer=Math.abs(ax)>DEADZONE?ax:0;
   gpState.accel=(pad.buttons[7]?.value>0.1)||!!(pad.buttons[0]?.pressed);
   gpState.brake=(pad.buttons[6]?.value>0.1)||!!(pad.buttons[1]?.pressed);
   gpState.boost=!!(pad.buttons[2]?.pressed)||!!(pad.buttons[3]?.pressed);
+  gpState.kers=!!(pad.buttons[5]?.pressed)||!!(pad.buttons[4]?.pressed);   // RB/LB = KERS deploy
 }
 
 // ─── Input ────────────────────────────────────────────────────────────────────
 // Arcade keys: Arrow keys + W/S drive, A/Z shift gears, Space = boost
-const keys={ArrowUp:false,ArrowDown:false,ArrowLeft:false,ArrowRight:false,Space:false};
+const keys={ArrowUp:false,ArrowDown:false,ArrowLeft:false,ArrowRight:false,Space:false,KeyK:false};
 
 window.addEventListener('keydown',e=>{
   if(document.activeElement?.tagName==='INPUT')return;
@@ -920,6 +922,130 @@ const SPAWN_INTERVAL=2.2;        // s, default
 function difficultyTier(score){return Math.min(6,Math.floor(score/2000));}      // cap at 12000 pts
 function trafficSpeedMult(score){return Math.pow(1.06,difficultyTier(score));}  // +6%/tier
 function spawnInterval(score){return SPAWN_INTERVAL*Math.pow(0.92,difficultyTier(score));} // −8%/tier
+
+// ════════════════════════════════════════════════════════════════════════════════
+// Milestone 3G — Sim-Physics v2: drag + KERS + thermal.
+// Three INDEPENDENT, pure classes (verbatim from the verified module). They MULTIPLY
+// into the existing 5-gear/RPM/grip/overheat systems — they never replace the gear
+// curve as the drive source. Tuned configs (below the classes) move them onto the
+// game's MPH scale; the gear cap is fed in as the drag model's throttle term so the
+// transmission stays the single drive and top speed asymptotes from v² drag.
+// ════════════════════════════════════════════════════════════════════════════════
+class AeroDragModel {
+  constructor(cfg = {}) {
+    this.driveForceMax  = cfg.driveForceMax  !== undefined ? cfg.driveForceMax  : 900;
+    this.brakeForceMax  = cfg.brakeForceMax  !== undefined ? cfg.brakeForceMax  : 1600;
+    this.dragCoeff      = cfg.dragCoeff      !== undefined ? cfg.dragCoeff      : 0.0020; // 0.5*rho*Cd*A, lumped
+    this.rollingResist  = cfg.rollingResist  !== undefined ? cfg.rollingResist  : 0.5;
+    this.mass           = cfg.mass           !== undefined ? cfg.mass           : 1.0;
+  }
+  getAcceleration(throttle01, brake01, speed) {
+    const drive = throttle01 * this.driveForceMax;
+    const drag  = this.dragCoeff * speed * speed;        // opposes motion
+    const roll  = this.rollingResist * speed;            // opposes motion
+    const brake = brake01 * this.brakeForceMax;          // opposes motion
+    return (drive - drag - roll - brake) / this.mass;
+  }
+  getTopSpeed() {
+    const a = this.dragCoeff, b = this.rollingResist, c = -this.driveForceMax;
+    return (-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a);
+  }
+}
+class KersSystem {
+  constructor(cfg = {}) {
+    this.capacity        = cfg.capacity        !== undefined ? cfg.capacity        : 100;
+    this.harvestRate     = cfg.harvestRate     !== undefined ? cfg.harvestRate     : 60;
+    this.deployRate      = cfg.deployRate      !== undefined ? cfg.deployRate      : 50;
+    this.deployForce     = cfg.deployForce     !== undefined ? cfg.deployForce     : 300;
+    this.minDeployCharge = cfg.minDeployCharge !== undefined ? cfg.minDeployCharge : 20;
+    this.charge      = 0;
+    this.isDeploying = false;
+  }
+  update(dt, braking01, deployInput) {
+    if (braking01 > 0 && this.charge < this.capacity) {
+      this.charge += this.harvestRate * braking01 * dt;
+      if (this.charge > this.capacity) this.charge = this.capacity;
+    }
+    const canStart = this.charge >= this.minDeployCharge;
+    if (deployInput && this.charge > 0 && (this.isDeploying || canStart)) {
+      this.isDeploying = true;
+      this.charge -= this.deployRate * dt;
+      if (this.charge <= 0) { this.charge = 0; this.isDeploying = false; }
+    } else {
+      this.isDeploying = false;
+    }
+  }
+  get charge01() { return this.charge / this.capacity; }
+  getBoostForce() { return this.isDeploying ? this.deployForce : 0; }
+}
+class ThermalModel {
+  constructor(cfg = {}) {
+    this.ambient            = cfg.ambient            !== undefined ? cfg.ambient            : 25;
+    this.engineHeatPerLoad  = cfg.engineHeatPerLoad  !== undefined ? cfg.engineHeatPerLoad  : 140;
+    this.engineCooling      = cfg.engineCooling      !== undefined ? cfg.engineCooling      : 0.55;
+    this.engineMaxTemp      = cfg.engineMaxTemp      !== undefined ? cfg.engineMaxTemp      : 110;
+    this.engineDerateRange  = cfg.engineDerateRange  !== undefined ? cfg.engineDerateRange  : 30;
+    this.engineMinPower     = cfg.engineMinPower     !== undefined ? cfg.engineMinPower     : 0.6;
+    this.tyreHeatPerSlip    = cfg.tyreHeatPerSlip    !== undefined ? cfg.tyreHeatPerSlip    : 160;
+    this.tyreCooling        = cfg.tyreCooling        !== undefined ? cfg.tyreCooling        : 0.5;
+    this.tyreOptimalTemp    = cfg.tyreOptimalTemp    !== undefined ? cfg.tyreOptimalTemp    : 90;
+    this.tyreWindow         = cfg.tyreWindow         !== undefined ? cfg.tyreWindow         : 18;
+    this.tyreColdGrip       = cfg.tyreColdGrip       !== undefined ? cfg.tyreColdGrip       : 0.7;
+    this.tyreHotGrip        = cfg.tyreHotGrip        !== undefined ? cfg.tyreHotGrip        : 0.6;
+    this.tyreFalloff        = cfg.tyreFalloff        !== undefined ? cfg.tyreFalloff        : 40;
+    this.airflowFactor      = cfg.airflowFactor      !== undefined ? cfg.airflowFactor      : 0.004;
+    this.engineTemp = this.ambient;
+    this.tyreTemp   = this.ambient;
+  }
+  update(dt, engineLoad01, rpm01, tyreSlip01, speed) {
+    const airflow = 1 + this.airflowFactor * speed;
+    const eHeat = this.engineHeatPerLoad * (engineLoad01 * 0.6 + rpm01 * 0.4);
+    const eCool = this.engineCooling * (this.engineTemp - this.ambient) * airflow;
+    this.engineTemp += (eHeat - eCool) * dt;
+    if (this.engineTemp < this.ambient) this.engineTemp = this.ambient;
+    const tHeat = this.tyreHeatPerSlip * tyreSlip01;
+    const tCool = this.tyreCooling * (this.tyreTemp - this.ambient) * airflow;
+    this.tyreTemp += (tHeat - tCool) * dt;
+    if (this.tyreTemp < this.ambient) this.tyreTemp = this.ambient;
+  }
+  getEnginePowerMultiplier() {
+    if (this.engineTemp <= this.engineMaxTemp) return 1.0;
+    let over = (this.engineTemp - this.engineMaxTemp) / this.engineDerateRange;
+    if (over > 1) over = 1;
+    return 1.0 - over * (1.0 - this.engineMinPower);
+  }
+  getTyreGripMultiplier() {
+    const d = this.tyreTemp - this.tyreOptimalTemp;
+    const ad = d < 0 ? -d : d;
+    if (ad <= this.tyreWindow) return 1.0;
+    let t = (ad - this.tyreWindow) / this.tyreFalloff;
+    if (t > 1) t = 1;
+    const floor = d < 0 ? this.tyreColdGrip : this.tyreHotGrip;
+    return 1.0 - t * (1.0 - floor);
+  }
+}
+
+// 3G instances — tuned to the game's MPH scale (driveForceMax is paired with the gear
+// cap fed in as throttle so each gear asymptotes toward its own MPH ceiling).
+const drag = new AeroDragModel({
+  driveForceMax: 150,   // with the gear-cap throttle term, full throttle in top gear → ~185 MPH asymptote
+  brakeForceMax: 110,   // harder braking than the old flat −90 MPH/s (drag adds more at speed)
+  dragCoeff: 0.0035,    // v² term → smooth asymptotic top end, no hard wall
+  rollingResist: 0.15,
+  mass: 1.0
+});
+const kers = new KersSystem({
+  capacity: 100, harvestRate: 55, deployRate: 45,
+  deployForce: 38,      // extra MPH/s while deploying (its own boost, decoupled from nitro)
+  minDeployCharge: 20
+});
+const thermal = new ThermalModel({
+  engineHeatPerLoad: 85, engineCooling: 0.7,  // sustained low-airflow redline overheats; airflow cools at speed
+  engineMaxTemp: 110, engineDerateRange: 35, engineMinPower: 0.65,
+  tyreHeatPerSlip: 120, tyreCooling: 0.5,
+  tyreOptimalTemp: 90, tyreWindow: 22, tyreColdGrip: 0.85, tyreHotGrip: 0.75, tyreFalloff: 45,
+  airflowFactor: 0.004
+});
 
 // Accessibility: honour prefers-reduced-motion (halt grid scroll, scenery, crash shake).
 const reduceMotion=(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)||false;
@@ -1285,6 +1411,9 @@ function initGame(){
   entities=[];pickups=[];puddles=[];birds=[];particles=[];floatingTexts=[];fxList=[];decals=[];obstacleTimer=4;
   peds=[];props=[];pedTimer=6;propTimer=1.5;
   nearMissCount=0;topGearReached=1;
+  // M3G: reset sim-physics v2 state (cold engine & tyres, empty KERS) for a fresh run.
+  thermal.engineTemp=thermal.ambient;thermal.tyreTemp=thermal.ambient;
+  kers.charge=0;kers.isDeploying=false;
   scenery=[];
   // §5.5 weather machine: sunny45 → warning5 → rain30 → clearing10 (90s loop).
   weather={state:'sunny',timer:45,intensity:0,drops:[]};
@@ -1467,29 +1596,48 @@ function update(dt){
   const accelKey=keys.ArrowUp||gpState.accel;
   const brakeKey=keys.ArrowDown||gpState.brake;
   player.accelActive=accelKey;player.brakeActive=brakeKey;   // M3a: expose for telemetry
-  let accelMPH=gearAccelMPH(player.gear);
-  if(player.bogTimer>0){player.bogTimer-=dt;accelMPH*=0.58;}
-  if(accelKey)player.speed+=accelMPH*dt;
-  else if(brakeKey)player.speed-=90*dt;
-  else player.speed-=14*dt;
-  if(player.speed>player.maxSpeed)player.speed-=60*dt; // soft cap at gear top speed
-  player.speed=Math.max(0,player.speed);
+  if(player.bogTimer>0)player.bogTimer-=dt;                   // engine bog timer ticks regardless
+
+  // ── M3G sim-physics v2: drag + KERS + thermal MULTIPLY into the gear model ───────
+  // The gear/RPM curve stays the single drive: its MPH cap is converted into the drag
+  // model's throttle term, so full throttle in each gear asymptotes toward that gear's
+  // ceiling (no hard cap) instead of being clamped. Thermal derates the drive when hot;
+  // KERS adds its own decoupled boost force. Speed integrates the net acceleration.
+  const rpm01=Math.max(0,Math.min(1,(rpmFor(player.speed,player.gear)-RPM_IDLE)/(RPM_REDLINE-RPM_IDLE)));
+  const gearCap=player.maxSpeed;                              // gearStats[gear].max * nitroMul
+  // throttle term that makes the fixed drag model asymptote toward this gear's cap
+  let gearThrottle=(drag.dragCoeff*gearCap*gearCap+drag.rollingResist*gearCap)/drag.driveForceMax;
+  // ThermalModel: engine heat from throttle+revs, tyre heat from speed/slip/braking.
+  const engineLoad01=accelKey?1:0;
+  const tyreWork01=Math.min(1,(player.speed/185)*0.5+Math.abs(player.slipAngle)/45*0.5+(brakeKey?0.3:0));
+  thermal.update(dt,engineLoad01,rpm01,tyreWork01,player.speed);
+  const powerMult=thermal.getEnginePowerMultiplier();         // ≤1 when engine overheats
+  let throttle01=0;
+  if(accelKey){
+    throttle01=gearThrottle;
+    if(player.bogTimer>0)throttle01*=0.58;                    // bog reduces drive (same −42%)
+    throttle01*=powerMult;                                    // hot engine derates the drive
+  }
+  const brake01=brakeKey?1:0;
+  // KERS: harvest under braking, deploy on K / gamepad bumper (its own boost, not nitro).
+  const kersDeploy=keys.KeyK||gpState.kers;
+  kers.update(dt,brake01,kersDeploy);
+  const accel=drag.getAcceleration(throttle01,brake01,player.speed)+kers.getBoostForce()/drag.mass;
+  player.speed=Math.max(0,player.speed+accel*dt);
+  if(kers.getBoostForce()>0&&Math.random()<0.3)createParticles(player.x+16,player.y+64,'#ffcc00',2); // KERS spark
 
   // Phase 3: lay skid marks under hard braking at speed (cosmetic decal)
   if(brakeKey&&player.speed>45&&player.spinLock<=0&&Math.random()<0.6){
     spawnDecal('skid',player.x+player.w/2,player.y+player.h-6,{rot:0,size:26,dur:1.5,alpha:0.5});
   }
 
-  // §5.1 Overheat: holding redline (≥ gear top speed) >1.2s → forced 50 MPH, −15% fuel.
-  if(!player.nitroActive&&player.speed>=gearStats[player.gear].max-0.5){
-    player.overheatTimer+=dt;
-    if(player.overheatTimer>1.2){
-      player.speed=Math.min(player.speed,50);player.fuel=Math.max(0,player.fuel-15);
-      floatingTexts.push({text:'OVERHEAT! -15% FUEL',x:player.x+16,y:player.y-20,timer:1.5,color:'#ff6b6b'});
-      spawnFX('fxFire',player.x+16,player.y+40,{dur:0.5,size:38,grow:10,vy:60}); // overheat flames
-      player.overheatTimer=0;
-    }
-  }else{player.overheatTimer=Math.max(0,player.overheatTimer-dt*2);}
+  // §5.1 Overheat is now governed by ThermalModel (replaces the old forced-50-MPH rule —
+  // one heat system, no double-count). powerMult above already derates drive when hot;
+  // here we add the visual/feedback cue + a one-shot warning the first time it bites.
+  if(powerMult<0.97){
+    if(Math.random()<0.25)spawnFX('fxFire',player.x+16,player.y+40,{dur:0.5,size:34,grow:10,vy:60});
+    if(!player._overheatWarned){player._overheatWarned=true;floatingTexts.push({text:'ENGINE OVERHEAT — POWER DOWN',x:player.x+16,y:player.y-20,timer:1.5,color:'#ff6b6b'});}
+  }else if(powerMult>=0.999){player._overheatWarned=false;}
 
   // Spinout / hydroplane spin; spinLock disables steering during a 1.2s hydroplane.
   if(player.spinAngle>0){player.spinAngle-=dt*10;if(player.spinAngle<0)player.spinAngle=0;}
@@ -1499,7 +1647,9 @@ function update(dt){
 
   // ── Steering (rain −35%; tyre grip from M3a; ignored during hydroplane spinLock) ─
   // M3a gripFactor folds into THIS turn-speed (the same grip path) — no double-count.
-  player.gripFactor=0.65+(player.tireWear/100)*0.35;
+  // M3G: tyre-temperature grip MULTIPLIES into the existing wear-based grip (cold/hot tyres
+  // lose grip), it does not override it.
+  player.gripFactor=(0.65+(player.tireWear/100)*0.35)*thermal.getTyreGripMultiplier();
   let steerDir=0;
   if(player.speed>0&&player.spinLock<=0){
     const rainPenalty=1-(weather.intensity*0.35);
@@ -2059,6 +2209,19 @@ function drawHUD(){
   else if(player.nitroCooldown>0){nf=1-(player.nitroCooldown/8);ncol='#888';}
   else{nf=1;ncol='#00ffff';}
   ctx.fillStyle=ncol;ctx.fillRect(20,165,140*Math.max(0,Math.min(1,nf)),10);
+
+  // M3G: KERS charge gauge (harvest under braking, deploy with K / bumper) — thin bar in the gap
+  ctx.fillStyle='#ffaa00';ctx.font='8px "Press Start 2P"';ctx.fillText('KERS',20,184);
+  ctx.fillStyle='#222';ctx.fillRect(58,177,102,6);
+  ctx.fillStyle=kers.isDeploying?(Math.floor(Date.now()/80)%2?'#ffd166':'#ffffff'):(kers.charge01>=0.2?'#ffaa00':'#7a5a18');
+  ctx.fillRect(58,177,102*Math.max(0,Math.min(1,kers.charge01)),6);
+
+  // M3G: engine + tyre temperature pips (right of the RPM bar; red when derating/off-grip)
+  const _eF=Math.max(0,Math.min(1,(thermal.engineTemp-thermal.ambient)/130));
+  const _tF=Math.max(0,Math.min(1,(thermal.tyreTemp-thermal.ambient)/130));
+  ctx.fillStyle='#222';ctx.fillRect(166,125,5,10);ctx.fillRect(173,125,5,10);
+  ctx.fillStyle=thermal.getEnginePowerMultiplier()<0.999?'#ff4444':'#ff8844';ctx.fillRect(166,125+10*(1-_eF),5,10*_eF);
+  ctx.fillStyle=thermal.getTyreGripMultiplier()<0.999?'#ff5555':'#4aa3ff';ctx.fillRect(173,125+10*(1-_tF),5,10*_tF);
 
   // Gear indicator
   ctx.fillStyle='white';ctx.font='10px "Press Start 2P"';ctx.fillText('GEAR',20,198);
