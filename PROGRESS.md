@@ -47,6 +47,45 @@ Branch: `agent-claude/m4-gameover-flow` (off `main`, after #12–#15 merged)
 
 ---
 
+## Phase 3 — Obstacles (cones / barriers / oil slicks) + road decals
+Branch: `agent-claude/phase3-obstacles` (off `main`)
+
+### Done
+1. **Obstacle subtypes + weighted spawn.** `spawnObstacle()` reuses the traffic spawner pattern
+   (`pickSpawnLane` fairness) and pushes one of three `otype`s into the existing `entities` array:
+   cones ~55%, barriers ~27%, oil slicks ~18% (measured 442/220/138 over 800 spawns, 0 misses).
+   All procedural in `drawObstacle(x,y,w,h,otype,yaw)` — no sprites. They scroll + despawn off-screen
+   via the existing entity cull (verified: an off-screen obstacle is removed within one update, no leak).
+2. **Per-type reactions, all via applyImpact / the existing hazard path** (no bespoke FX):
+   - **cone** → light clip: `applyImpact(…,0.3,'sideswipe')` + speed scrub + a tyre scuff
+     (`grindScrape`), and the cone is knocked tumbling away (`vx/vy/spin`, brief 0.18 s debounce).
+   - **barrier** → `handleCrash(false)` → hard `applyImpact(…,'crash')`.
+   - **oil slick** → `handleHydroplane()` (the existing grip-loss/spin path) — NOT a crash; you
+     drive through it, with a 1.2 s re-trigger cooldown.
+3. **Persistent decals reuse the impact-juice pool (no second system).** Heavy-braking tyre marks
+   (existing `spawnDecal('skid')`, whose primitive already renders dual tyre tracks), drift marks,
+   and grind scrape streaks (`grindScrape`) all write into `decals[]` — capped (80 total / 14
+   scrape) and fading via `updateDecals`. Cone clips also feed a scrape streak.
+
+### Verification (headless — no browser here)
+- `node --check` clean; boots. In-scope sim driving the real `update()` with the reaction
+  functions stubbed to count calls: cone → `['sideswipe']` impact, no crash, knocked=true;
+  barrier → crash=1; oil slick → hydro=1; spawn distribution 442/220/138/0; off-screen despawn=true.
+- **Pending manual/browser QA:** the feel of cone clips vs barrier crashes vs oil-slick spins,
+  and that fairness (≥1 open lane) holds with hazards + traffic mixed.
+
+### Assumptions logged
+- Built off `main` (has #13's applyImpact + decal pool + hydroplane). #16 (game-over flow) is an
+  open PR, not merged — Phase 3's real dependencies are all on `main`, so this branches off `main`
+  as instructed; the collision region lightly overlaps #16, so expect a tiny reconcile at merge.
+- Oil slicks are surface hazards (drive-through, like rain puddles), not solid colliders.
+- No new assets (all procedural) → `asset-manifest.json` unchanged.
+
+### Build size
+`index.html` **+2.8 KB** (code only). No asset-budget impact.
+
+---
+
 ## Screen art — synthwave backdrops behind title/menu, game-over, leaderboard, new-high-score
 Branch: `agent-claude/screen-art` (off `main`)
 
