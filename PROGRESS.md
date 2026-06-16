@@ -1,5 +1,52 @@
 # Octane Racer — Progress Log
 
+## Wave 1 — Game-over flow + high scores
+Branch: `agent-claude/m4-gameover-flow` (off `main`, after #12–#15 merged)
+
+### Done
+1. **Run stats + one score function.** `freshPlayer` gains `topSpeed`/`bestCombo`, tracked each
+   frame in `update`. `scoreRun()` = `f(distance, topSpeed, bestCombo, nearMisses)` with all
+   weights in one tunable `SCORE` block; it's the single source of the final score (`lastRunScore`).
+2. **Procedural game-over explosion (no sprite).** `applyImpact(…, 'gameover')` now emits a fully
+   procedural burst — neon sparks (cyan/magenta/green) + hot debris + smoke + two expanding
+   `spawnShockwave` rings — replacing the `fxExplosion` sprite path. New pooled `shockwaves`
+   system (`spawn/update/draw`, additive, capped).
+3. **Death sequence over a dimmed frozen frame.** New `gameState='dying'`: `endRun()` fires the
+   explosion then holds for `DEATH_DUR` (0.9 s) while `updateDeath()` animates particles/FX/
+   shockwaves/impact-decay (gameplay frozen); `render()` ramps a dim veil; then `triggerGameOver()`
+   shows the overlay. Reduced-motion skips straight to the overlay.
+4. **GAME OVER overlay** shows DISTANCE, TOP SPEED, BEST COMBO, NEAR MISSES + the final SCORE.
+   Coexists with #15's `gameover.jpg` backdrop (the dim+explosion play on the canvas during
+   `dying`, then the art overlay slides in).
+5. **HighScoreStore** (IIFE, built to spec — `highscore.js` wasn't supplied): cap-5, sort desc,
+   `qualifies(score)`, `add(name,score)` → new-row index, localStorage in try/catch, corruption-
+   safe load (validates + sanitizes parsed JSON, falls back to defaults). Wired into the qualify
+   check, save, and board. Initials entry now 3–8 chars (touch input + keyboard; **Enter** saves);
+   the new row is **highlighted** on the top-5 board. Added a blinking **TAP TO RESTART** (tap the
+   game-over screen, except buttons/while entering initials).
+6. **Clean restart.** `initGame` clears `shockwaves`/`deathTimer` on top of the existing
+   `resetImpactState()` + fresh player — asserted no leftover shake/hitstop/rage/combo/topSpeed.
+
+### Verification (headless — no browser here)
+- `node --check` clean; boots. In-scope logic sim: HighScoreStore cap=5 + sorted, qualifies
+  (low=false / high=true / zero=false), `add` returns the new row index & stays capped & persists,
+  names sanitized, corruption survives; `scoreRun()` computes from stats; restart zeroes every
+  transient (shake/hitstop/rage/shockwaves/deathTimer/combo/topSpeed, bestCombo→1).
+- **Pending manual/browser QA:** the death-explosion feel + dim veil, the gameover backdrop
+  coexistence, initials entry on a device, and tap-to-restart.
+
+### Assumptions logged
+- `highscore.js` wasn't attached → implemented `HighScoreStore` to the described API and
+  sandbox-tested it headlessly.
+- Final score is `scoreRun()` (a pure function of run stats); the live HUD score stays the
+  in-play running tally. Weights live in `SCORE` (tunable).
+- No new assets (procedural explosion) → `asset-manifest.json` unchanged.
+
+### Build size
+`index.html` **+5.3 KB** (code only) → 1.24 MB. No asset-budget impact.
+
+---
+
 ## Screen art — synthwave backdrops behind title/menu, game-over, leaderboard, new-high-score
 Branch: `agent-claude/screen-art` (off `main`)
 
