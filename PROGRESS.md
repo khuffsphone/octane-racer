@@ -86,6 +86,46 @@ Branch: `agent-claude/phase3-obstacles` (off `main`)
 
 ---
 
+## Phase 4 — Roadside life: parallax + spectators + billboards
+Branch: `agent-claude/phase4-scenery` (off `main`)
+
+### Done
+1. **Two-tier parallax** in the existing prop spawner: a **far** neon-skyline layer (procedural
+   building silhouettes with baked, non-flickering lit windows, `par≈0.30–0.40`) and a **near**
+   layer (palms/lamps/signs, `par≈0.55–0.70`), both scrolling behind the road at depth-scaled
+   speeds. Pure procedural.
+2. **Roadside scenery spawner** reuses the Phase-3 margin spawn/scroll/despawn — all props live in
+   the roadside margins only, never in a drivable lane, never hittable.
+3. **Spectators (redesigned).** The earlier crossing/fleeing pedestrians are replaced by
+   **decorative roadside spectators**: margin-only, animated cheer/wave + bob, **no collision, no
+   combo, not targets**. They scroll with the near tier and despawn off-screen (no leak). Procedural
+   cheering figure, or the `ped1–4` sprite if present.
+4. **Billboards.** `spawnBillboard()` posts signs in the margins on a **separate occasional cadence**
+   (~3.5–7 s), **alternating sides**, scrolling at the near-scenery speed. Draws the sign sprite if
+   loaded, else a **procedural fallback panel**. The 11 sign keys (`signGirlShake … signPalm`) are
+   registered in `assetManifest` + `asset-manifest.json` for drop-in.
+
+### Verification (headless — no browser here)
+- `node --check` clean; boots. In-scope sim: spectators don't mutate score/combo on overlap (no
+  collision), spawn margin-only (200/200 outside the road), and despawn off-screen; billboards
+  alternate sides, carry a valid sign key, scroll + despawn (no leak); both parallax tiers present.
+- **Pending manual/browser QA:** the look/feel of the skyline depth, spectator animation, and
+  billboard spacing.
+
+### ⚠️ Assumption / blocker logged
+- The **11 sign PNGs were not on the container filesystem** (only the older screen-art JPGs are
+  present) — same as the screen-art backdrops earlier. Per the brief's built-in fallback I shipped
+  the full system with the **procedural fallback panel** and the 11 keys **wired for drop-in**;
+  billboards light up with the real art the moment the base64 is inlined (a quick follow-up pass).
+  So Task 4's "inline the 11 signs" is **pending the files**; everything else is complete.
+- Budget: no new bytes inlined yet (signs pending). Footprint stays **~2.24 MB / 3 MB**; projected
+  **~2.43 MB** once the 11 signs are inlined (pngquant ~13 KB each) — still under 3 MB.
+
+### Build size
+`index.html` **+3.8 KB** (code only). No asset-budget impact yet.
+
+---
+
 ## Screen art — synthwave backdrops behind title/menu, game-over, leaderboard, new-high-score
 Branch: `agent-claude/screen-art` (off `main`)
 

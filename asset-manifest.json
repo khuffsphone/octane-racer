@@ -439,6 +439,182 @@
         "ui"
       ],
       "status": "integrated"
+    },
+    {
+      "id": "signGirlShake",
+      "type": "billboard-sign",
+      "path": "assets/signs/signGirlShake.png",
+      "description": "Roadside billboard sign (signGirlShake). Key registered; pending inline base64 — billboards use the procedural fallback panel until the PNG is supplied.",
+      "license": "user-provided; project use approved by owner",
+      "source": "User-provided billboard art (pending)",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "billboard",
+        "sign",
+        "roadside",
+        "phase4"
+      ],
+      "status": "declared"
+    },
+    {
+      "id": "signGirlIcecream",
+      "type": "billboard-sign",
+      "path": "assets/signs/signGirlIcecream.png",
+      "description": "Roadside billboard sign (signGirlIcecream). Key registered; pending inline base64 — billboards use the procedural fallback panel until the PNG is supplied.",
+      "license": "user-provided; project use approved by owner",
+      "source": "User-provided billboard art (pending)",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "billboard",
+        "sign",
+        "roadside",
+        "phase4"
+      ],
+      "status": "declared"
+    },
+    {
+      "id": "signGirlBurger",
+      "type": "billboard-sign",
+      "path": "assets/signs/signGirlBurger.png",
+      "description": "Roadside billboard sign (signGirlBurger). Key registered; pending inline base64 — billboards use the procedural fallback panel until the PNG is supplied.",
+      "license": "user-provided; project use approved by owner",
+      "source": "User-provided billboard art (pending)",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "billboard",
+        "sign",
+        "roadside",
+        "phase4"
+      ],
+      "status": "declared"
+    },
+    {
+      "id": "signGirlSoda",
+      "type": "billboard-sign",
+      "path": "assets/signs/signGirlSoda.png",
+      "description": "Roadside billboard sign (signGirlSoda). Key registered; pending inline base64 — billboards use the procedural fallback panel until the PNG is supplied.",
+      "license": "user-provided; project use approved by owner",
+      "source": "User-provided billboard art (pending)",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "billboard",
+        "sign",
+        "roadside",
+        "phase4"
+      ],
+      "status": "declared"
+    },
+    {
+      "id": "signGuyShake",
+      "type": "billboard-sign",
+      "path": "assets/signs/signGuyShake.png",
+      "description": "Roadside billboard sign (signGuyShake). Key registered; pending inline base64 — billboards use the procedural fallback panel until the PNG is supplied.",
+      "license": "user-provided; project use approved by owner",
+      "source": "User-provided billboard art (pending)",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "billboard",
+        "sign",
+        "roadside",
+        "phase4"
+      ],
+      "status": "declared"
+    },
+    {
+      "id": "signGuyBurger",
+      "type": "billboard-sign",
+      "path": "assets/signs/signGuyBurger.png",
+      "description": "Roadside billboard sign (signGuyBurger). Key registered; pending inline base64 — billboards use the procedural fallback panel until the PNG is supplied.",
+      "license": "user-provided; project use approved by owner",
+      "source": "User-provided billboard art (pending)",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "billboard",
+        "sign",
+        "roadside",
+        "phase4"
+      ],
+      "status": "declared"
+    },
+    {
+      "id": "signGuyEnergy",
+      "type": "billboard-sign",
+      "path": "assets/signs/signGuyEnergy.png",
+      "description": "Roadside billboard sign (signGuyEnergy). Key registered; pending inline base64 — billboards use the procedural fallback panel until the PNG is supplied.",
+      "license": "user-provided; project use approved by owner",
+      "source": "User-provided billboard art (pending)",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "billboard",
+        "sign",
+        "roadside",
+        "phase4"
+      ],
+      "status": "declared"
+    },
+    {
+      "id": "signGas",
+      "type": "billboard-sign",
+      "path": "assets/signs/signGas.png",
+      "description": "Roadside billboard sign (signGas). Key registered; pending inline base64 — billboards use the procedural fallback panel until the PNG is supplied.",
+      "license": "user-provided; project use approved by owner",
+      "source": "User-provided billboard art (pending)",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "billboard",
+        "sign",
+        "roadside",
+        "phase4"
+      ],
+      "status": "declared"
+    },
+    {
+      "id": "signCone",
+      "type": "billboard-sign",
+      "path": "assets/signs/signCone.png",
+      "description": "Roadside billboard sign (signCone). Key registered; pending inline base64 — billboards use the procedural fallback panel until the PNG is supplied.",
+      "license": "user-provided; project use approved by owner",
+      "source": "User-provided billboard art (pending)",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "billboard",
+        "sign",
+        "roadside",
+        "phase4"
+      ],
+      "status": "declared"
+    },
+    {
+      "id": "signChili",
+      "type": "billboard-sign",
+      "path": "assets/signs/signChili.png",
+      "description": "Roadside billboard sign (signChili). Key registered; pending inline base64 — billboards use the procedural fallback panel until the PNG is supplied.",
+      "license": "user-provided; project use approved by owner",
+      "source": "User-provided billboard art (pending)",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "billboard",
+        "sign",
+        "roadside",
+        "phase4"
+      ],
+      "status": "declared"
+    },
+    {
+      "id": "signPalm",
+      "type": "billboard-sign",
+      "path": "assets/signs/signPalm.png",
+      "description": "Roadside billboard sign (signPalm). Key registered; pending inline base64 — billboards use the procedural fallback panel until the PNG is supplied.",
+      "license": "user-provided; project use approved by owner",
+      "source": "User-provided billboard art (pending)",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "billboard",
+        "sign",
+        "roadside",
+        "phase4"
+      ],
+      "status": "declared"
     }
   ],
   "deferred": [
