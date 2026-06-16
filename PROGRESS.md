@@ -86,6 +86,50 @@ Branch: `agent-claude/phase3-obstacles` (off `main`)
 
 ---
 
+## Phase 4 — Roadside life: parallax + spectators + billboards
+Branch: `agent-claude/phase4-scenery` (off `main`)
+
+### Done
+1. **Two-tier parallax** in the existing prop spawner: a **far** neon-skyline layer (procedural
+   building silhouettes with baked, non-flickering lit windows, `par≈0.30–0.40`) and a **near**
+   layer (palms/lamps/signs, `par≈0.55–0.70`), both scrolling behind the road at depth-scaled
+   speeds. Pure procedural.
+2. **Roadside scenery spawner** reuses the Phase-3 margin spawn/scroll/despawn — all props live in
+   the roadside margins only, never in a drivable lane, never hittable.
+3. **Spectators (redesigned).** The earlier crossing/fleeing pedestrians are replaced by
+   **decorative roadside spectators**: margin-only, animated cheer/wave + bob, **no collision, no
+   combo, not targets**. They scroll with the near tier and despawn off-screen (no leak). Procedural
+   cheering figure, or the `ped1–4` sprite if present.
+4. **Billboards.** `spawnBillboard()` posts signs in the margins on a **separate occasional cadence**
+   (~3.5–7 s), **alternating sides**, scrolling at the near-scenery speed. Draws the sign sprite if
+   loaded, else a **procedural fallback panel**. The 11 sign keys (`signGirlShake … signPalm`) are
+   registered in `assetManifest` + `asset-manifest.json` for drop-in.
+
+### Verification (headless — no browser here)
+- `node --check` clean; boots. In-scope sim: spectators don't mutate score/combo on overlap (no
+  collision), spawn margin-only (200/200 outside the road), and despawn off-screen; billboards
+  alternate sides, carry a valid sign key, scroll + despawn (no leak); both parallax tiers present.
+- **Pending manual/browser QA:** the look/feel of the skyline depth, spectator animation, and
+  billboard spacing.
+
+### Signs inlined (follow-up — files supplied)
+- The 12 supplied source JPGs are each a 2×2 grid of billboard panels (48 total). I sliced them,
+  picked **11 distinct panels** (inset to trim the magenta gutter, keep the neon frame), resized to
+  **104×176 portrait**, JPEG q74, and **inlined all 11 as base64** into `assetManifest` (replacing
+  the placeholder paths); `asset-manifest.json` flipped to `integrated`. `drawBillboard` is now a
+  portrait sign panel (46×72) on a post.
+- **Key→panel mapping is best-effort/thematic** (decorative art; key names are internal): GuyShake/
+  GirlIcecream/GuyBurger from img0, GuyEnergy img1, GirlSoda img2, GirlShake/GirlBurger img3, and
+  Gas/Cone/Chili/Palm from the object images (img9–10). The Cone/Chili mascots are both pepper-ish —
+  a minor cosmetic quirk, easily reswapped if you want.
+- **Budget:** 11 signs ≈ 61 KB JPEG / **+84.6 KB** base64. Shipped footprint **2.32 MB / 3 MB** —
+  under budget.
+
+### Build size
+`index.html` **+3.8 KB** code + **84.6 KB** inlined signs → 1.32 MB.
+
+---
+
 ## Screen art — synthwave backdrops behind title/menu, game-over, leaderboard, new-high-score
 Branch: `agent-claude/screen-art` (off `main`)
 

@@ -439,6 +439,182 @@
         "ui"
       ],
       "status": "integrated"
+    },
+    {
+      "id": "signGirlShake",
+      "type": "billboard-sign",
+      "path": "assets/signs/signGirlShake.png",
+      "description": "Roadside billboard sign (signGirlShake). Inlined as base64 JPEG (104x176, q74) in assetManifest.",
+      "license": "user-provided; project use approved by owner",
+      "source": "User-provided billboard art",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "billboard",
+        "sign",
+        "roadside",
+        "phase4"
+      ],
+      "status": "integrated"
+    },
+    {
+      "id": "signGirlIcecream",
+      "type": "billboard-sign",
+      "path": "assets/signs/signGirlIcecream.png",
+      "description": "Roadside billboard sign (signGirlIcecream). Inlined as base64 JPEG (104x176, q74) in assetManifest.",
+      "license": "user-provided; project use approved by owner",
+      "source": "User-provided billboard art",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "billboard",
+        "sign",
+        "roadside",
+        "phase4"
+      ],
+      "status": "integrated"
+    },
+    {
+      "id": "signGirlBurger",
+      "type": "billboard-sign",
+      "path": "assets/signs/signGirlBurger.png",
+      "description": "Roadside billboard sign (signGirlBurger). Inlined as base64 JPEG (104x176, q74) in assetManifest.",
+      "license": "user-provided; project use approved by owner",
+      "source": "User-provided billboard art",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "billboard",
+        "sign",
+        "roadside",
+        "phase4"
+      ],
+      "status": "integrated"
+    },
+    {
+      "id": "signGirlSoda",
+      "type": "billboard-sign",
+      "path": "assets/signs/signGirlSoda.png",
+      "description": "Roadside billboard sign (signGirlSoda). Inlined as base64 JPEG (104x176, q74) in assetManifest.",
+      "license": "user-provided; project use approved by owner",
+      "source": "User-provided billboard art",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "billboard",
+        "sign",
+        "roadside",
+        "phase4"
+      ],
+      "status": "integrated"
+    },
+    {
+      "id": "signGuyShake",
+      "type": "billboard-sign",
+      "path": "assets/signs/signGuyShake.png",
+      "description": "Roadside billboard sign (signGuyShake). Inlined as base64 JPEG (104x176, q74) in assetManifest.",
+      "license": "user-provided; project use approved by owner",
+      "source": "User-provided billboard art",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "billboard",
+        "sign",
+        "roadside",
+        "phase4"
+      ],
+      "status": "integrated"
+    },
+    {
+      "id": "signGuyBurger",
+      "type": "billboard-sign",
+      "path": "assets/signs/signGuyBurger.png",
+      "description": "Roadside billboard sign (signGuyBurger). Inlined as base64 JPEG (104x176, q74) in assetManifest.",
+      "license": "user-provided; project use approved by owner",
+      "source": "User-provided billboard art",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "billboard",
+        "sign",
+        "roadside",
+        "phase4"
+      ],
+      "status": "integrated"
+    },
+    {
+      "id": "signGuyEnergy",
+      "type": "billboard-sign",
+      "path": "assets/signs/signGuyEnergy.png",
+      "description": "Roadside billboard sign (signGuyEnergy). Inlined as base64 JPEG (104x176, q74) in assetManifest.",
+      "license": "user-provided; project use approved by owner",
+      "source": "User-provided billboard art",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "billboard",
+        "sign",
+        "roadside",
+        "phase4"
+      ],
+      "status": "integrated"
+    },
+    {
+      "id": "signGas",
+      "type": "billboard-sign",
+      "path": "assets/signs/signGas.png",
+      "description": "Roadside billboard sign (signGas). Inlined as base64 JPEG (104x176, q74) in assetManifest.",
+      "license": "user-provided; project use approved by owner",
+      "source": "User-provided billboard art",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "billboard",
+        "sign",
+        "roadside",
+        "phase4"
+      ],
+      "status": "integrated"
+    },
+    {
+      "id": "signCone",
+      "type": "billboard-sign",
+      "path": "assets/signs/signCone.png",
+      "description": "Roadside billboard sign (signCone). Inlined as base64 JPEG (104x176, q74) in assetManifest.",
+      "license": "user-provided; project use approved by owner",
+      "source": "User-provided billboard art",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "billboard",
+        "sign",
+        "roadside",
+        "phase4"
+      ],
+      "status": "integrated"
+    },
+    {
+      "id": "signChili",
+      "type": "billboard-sign",
+      "path": "assets/signs/signChili.png",
+      "description": "Roadside billboard sign (signChili). Inlined as base64 JPEG (104x176, q74) in assetManifest.",
+      "license": "user-provided; project use approved by owner",
+      "source": "User-provided billboard art",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "billboard",
+        "sign",
+        "roadside",
+        "phase4"
+      ],
+      "status": "integrated"
+    },
+    {
+      "id": "signPalm",
+      "type": "billboard-sign",
+      "path": "assets/signs/signPalm.png",
+      "description": "Roadside billboard sign (signPalm). Inlined as base64 JPEG (104x176, q74) in assetManifest.",
+      "license": "user-provided; project use approved by owner",
+      "source": "User-provided billboard art",
+      "attribution": "AI-generated for Octane Racer project",
+      "tags": [
+        "billboard",
+        "sign",
+        "roadside",
+        "phase4"
+      ],
+      "status": "integrated"
     }
   ],
   "deferred": [
