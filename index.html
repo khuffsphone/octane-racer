@@ -169,6 +169,7 @@ button:disabled{filter:grayscale(.4) brightness(.7);cursor:not-allowed}
 
 /* Gameover */
 .go-title{font-size:2.2rem;color:#ff6b6b;margin-bottom:16px}
+.go-restart-hint{margin-top:14px;font-size:.5rem;color:#9ca3af;animation:blink 1.2s step-end infinite;text-transform:uppercase;letter-spacing:.12em}
 .go-score{font-size:1rem;margin-bottom:24px}
 .go-score span{color:#ffd166}
 .go-new-hs{display:none;flex-direction:column;align-items:center;gap:12px;margin-bottom:24px}
@@ -348,22 +349,23 @@ body.touch.racing #mobile-controls{display:block;}
 
     <!-- Game Over -->
     <div id="gameover-screen" class="arcade-overlay hidden">
-      <div class="go-title">CRASHED OUT</div>
+      <div class="go-title">GAME OVER</div>
       <div class="go-score">Score: <span id="final-score">0</span></div>
       <div class="go-stats" id="go-stats">
         <div><span class="stat-label">DISTANCE</span><span class="stat-value" id="go-distance">0</span></div>
-        <div><span class="stat-label">TIME</span><span class="stat-value" id="go-time">0:00</span></div>
-        <div><span class="stat-label">TOP GEAR</span><span class="stat-value" id="go-topgear">1</span></div>
+        <div><span class="stat-label">TOP SPEED</span><span class="stat-value" id="go-topspeed">0 MPH</span></div>
+        <div><span class="stat-label">BEST COMBO</span><span class="stat-value" id="go-bestcombo">x1</span></div>
         <div><span class="stat-label">NEAR MISSES</span><span class="stat-value" id="go-nearmiss">0</span></div>
       </div>
       <div id="new-highscore-box" class="go-new-hs">
         <p>NEW HIGH SCORE!</p>
-        <input type="text" id="initials-input" maxlength="3" placeholder="AAA"/>
+        <input type="text" id="initials-input" maxlength="8" placeholder="AAA" autocomplete="off" autocapitalize="characters"/>
         <button class="arc-btn" id="saveHSBtn">Save</button>
       </div>
       <div id="gameover-buttons">
         <button class="arc-btn" id="goRetryBtn">Try Again</button>
         <button class="arc-btn grey" id="goMenuBtn">Menu</button>
+        <div class="go-restart-hint">▶ TAP TO RESTART</div>
       </div>
       <!-- Multiplayer result area (hidden in solo) -->
       <div id="mpResultArea" class="hidden" style="margin-top:16px">
@@ -1136,30 +1138,67 @@ const thermal = new ThermalModel({
 // Accessibility: honour prefers-reduced-motion (halt grid scroll, scenery, crash shake).
 const reduceMotion=(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)||false;
 
-// §H persistence: localStorage high scores, try/catch so private/sandboxed contexts never throw.
-const HS_KEY='octane_highscores_v2';
-const defaultHighScores=[
-  {name:'RYU',score:15000},
-  {name:'AMI',score:10000},
-  {name:'GRX',score:7500},
-  {name:'CPU',score:5000},
-  {name:'NOB',score:2000}
-];
-function loadHighScores(){
-  try{const raw=localStorage.getItem(HS_KEY);if(raw){const a=JSON.parse(raw);if(Array.isArray(a)&&a.length)return a.slice(0,5);}}catch(e){/* private mode → in-memory */}
-  return defaultHighScores.map(s=>({...s}));
+// §H persistence — HighScoreStore: cap-5 board, sort desc, qualify check, localStorage
+// (try/catch so private/sandboxed contexts never throw), corruption-safe load (validates &
+// sanitizes parsed JSON, falls back to defaults). Built to spec (highscore.js wasn't supplied).
+const HighScoreStore=(function(){
+  const KEY='octane_highscores_v2', CAP=5;
+  const DEFAULTS=[
+    {name:'RYU',score:15000},{name:'AMI',score:10000},{name:'GRX',score:7500},
+    {name:'CPU',score:5000},{name:'NOB',score:2000}
+  ];
+  const cleanName=n=>String(n==null?'':n).toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,8)||'???';
+  function sanitize(a){
+    if(!Array.isArray(a))return null;
+    const out=[];
+    for(const e of a){
+      if(!e||typeof e!=='object')continue;
+      const score=Math.floor(Number(e.score));
+      if(!isFinite(score)||score<0)continue;
+      out.push({name:cleanName(e.name),score});
+    }
+    return out.length?out.sort((x,y)=>y.score-x.score).slice(0,CAP):null;
+  }
+  let scores;
+  function load(){
+    try{const raw=localStorage.getItem(KEY);if(raw){const s=sanitize(JSON.parse(raw));if(s){scores=s;return;}}}catch(e){/* private mode → in-memory */}
+    scores=DEFAULTS.map(s=>({...s}));
+  }
+  function persist(){try{localStorage.setItem(KEY,JSON.stringify(scores));}catch(e){/* in-memory fallback */}}
+  load();
+  return {
+    get:()=>scores.slice(),
+    cap:CAP,
+    qualifies(score){score=Math.floor(score);return score>0&&(scores.length<CAP||score>scores[scores.length-1].score);},
+    add(name,score){
+      const entry={name:cleanName(name),score:Math.max(0,Math.floor(Number(score)||0))};
+      scores.push(entry);scores.sort((a,b)=>b.score-a.score);
+      if(scores.length>CAP)scores.length=CAP;
+      persist();
+      return scores.indexOf(entry);   // row index of the new entry (−1 if it fell off the board)
+    }
+  };
+})();
+let lastRunScore=0;   // final score of the most-recent run (set at game over, used by save)
+
+// Final score = f(distance, topSpeed, bestCombo, nearMisses). One tunable place.
+const SCORE={dist:0.05, speed:18, combo:450, nearMiss:60};
+function scoreRun(){
+  return Math.round(
+    SCORE.dist*player.distance +
+    SCORE.speed*(player.topSpeed||0) +
+    SCORE.combo*(player.bestCombo||1) +
+    SCORE.nearMiss*nearMissCount
+  );
 }
-function persistHighScores(){
-  try{localStorage.setItem(HS_KEY,JSON.stringify(highScores));}catch(e){/* in-memory fallback */}
-}
-let highScores=loadHighScores();
 
 const basePlayerConfig={name:'Racer',color:'#ff3300'};
 let nearMissCount=0;
 let topGearReached=1;
 
 // ─── Game state ────────────────────────────────────────────────────────────────
-let gameState='splash'; // splash | menu | playing | gameover
+let gameState='splash'; // splash | menu | playing | dying | gameover
+let deathTimer=0; const DEATH_DUR=0.9;   // M4: death-explosion animation window before the overlay
 let lastTime=0;
 let lastPublish=0;
 
@@ -1198,7 +1237,7 @@ function freshPlayer(){
     invulnerable:0,spinAngle:0,spinLock:0,
     bogTimer:0,overheatTimer:0,
     nitroActive:false,nitroTimer:0,nitroCooldown:0,
-    multiplier:1,
+    multiplier:1,topSpeed:0,bestCombo:1,
     playTime:0,nextGasSpawn:8,
     // M3a sim-physics telemetry state (read by HUD/audio in later phases)
     gForceX:0,gForceY:0,slipAngle:0,tireWear:100,gripFactor:1,
@@ -1352,6 +1391,26 @@ function drawFXLayer(){
   ctx.restore();ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;
 }
 
+// ─── Procedural shockwave rings (game-over explosion; neon palette, expand + fade) ──
+let shockwaves=[];
+function spawnShockwave(x,y,opts={}){
+  shockwaves.push({x,y,t:0,dur:opts.dur||0.6,maxR:opts.maxR||140,from:opts.from||8,color:opts.color||'#00ffff',width:opts.width||4});
+  if(shockwaves.length>12)shockwaves.shift();
+}
+function updateShockwaves(dt){
+  for(let i=shockwaves.length-1;i>=0;i--){const s=shockwaves[i];s.t+=dt;if(s.t>=s.dur)shockwaves.splice(i,1);}
+}
+function drawShockwaves(){
+  if(!shockwaves.length)return;
+  ctx.save();ctx.globalCompositeOperation='screen';
+  for(const s of shockwaves){
+    const p=s.t/s.dur,r=s.from+(s.maxR-s.from)*(1-(1-p)*(1-p));   // ease-out expand
+    ctx.globalAlpha=Math.max(0,1-p)*0.85;ctx.strokeStyle=s.color;ctx.lineWidth=Math.max(0.5,s.width*(1-p*0.6));
+    ctx.beginPath();ctx.arc(s.x,s.y,r,0,Math.PI*2);ctx.stroke();
+  }
+  ctx.restore();ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
+}
+
 // ─── Phase 3: road decals (cosmetic, NORMAL alpha, drawn UNDER cars) ───────────
 // Sprite if the matching decalX is loaded, else a procedural dark mark. Never collides.
 let decals=[];
@@ -1463,11 +1522,21 @@ function emitImpactBurst(x,y,sev,type){
   if(typeof particlePool!=='undefined'&&particlePool&&typeof particlePool.emitBurst==='function'){
     particlePool.emitBurst(x,y,sev,type);return;
   }
-  if(type==='crash'||type==='gameover'){
+  if(type==='gameover'){
+    // The one big moment — fully PROCEDURAL (no sprite): neon sparks + debris + smoke,
+    // plus expanding shockwave rings in the synthwave palette.
+    createParticles(x,y,'#00ffff',26);
+    createParticles(x,y,'#ff2bd6',22);
+    createParticles(x,y,'#39ff14',18);
+    createParticles(x,y,'#ff7a1e',24);   // hot debris
+    createParticles(x,y,'#9a9aa2',12);   // smoke
+    spawnFX('fxSmoke',x,y,{dur:0.7,size:64,grow:40,spin:1.5});   // no-op if sprite absent
+    spawnShockwave(x,y,{dur:0.55,maxR:170,color:'#00ffff',width:5});
+    spawnShockwave(x,y,{dur:0.8,maxR:240,color:'#ff2bd6',width:3});
+  }else if(type==='crash'){
     createParticles(x,y,'#ff7a1e',Math.round(8+IMPACT.debrisCrash*sev));
     createParticles(x,y,'#9a9aa2',Math.round(4+IMPACT.smokeCrash*sev));
     spawnFX('fxSmoke',x,y,{dur:0.6,size:40+24*sev,grow:24,spin:1.5});
-    if(type==='gameover')spawnFX('fxExplosion',x,y,{dur:0.5,size:64,grow:60}); // the one big moment
   }else{
     createParticles(x,y,'#ffd27f',Math.round(4+IMPACT.sparkScrape*sev));
     spawnFX('fxSparks',x,y,{dur:0.3,size:24+22*sev});
@@ -1659,6 +1728,7 @@ function initGame(){
   entities=[];pickups=[];puddles=[];birds=[];particles=[];floatingTexts=[];fxList=[];decals=[];obstacleTimer=4;
   peds=[];props=[];pedTimer=6;propTimer=1.5;
   nearMissCount=0;topGearReached=1;
+  shockwaves=[];deathTimer=0;   // M4: clear death-sequence transients
   // M3G: reset sim-physics v2 state (cold engine & tyres, empty KERS) for a fresh run.
   thermal.engineTemp=thermal.ambient;thermal.tyreTemp=thermal.ambient;
   kers.charge=0;kers.isDeploying=false;
@@ -1749,7 +1819,19 @@ function endRun(){
   if(player.finished)return;
   player.finished=true;
   if(roomCode&&roomData?.status==='racing')publishFinish();
-  triggerGameOver();
+  // M4: fire the procedural game-over explosion, play it over a dimmed frozen frame, then
+  // show the overlay. Reduced-motion skips straight to the overlay.
+  applyImpact(player.x+16,player.y+24,1.0,'gameover');
+  if(reduceMotion){triggerGameOver();return;}
+  gameState='dying';deathTimer=DEATH_DUR;
+}
+// Death sequence: gameplay is frozen but the explosion + impact decay keep animating.
+function updateDeath(dt){
+  decayImpact(dt);
+  for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;if(p.life<=0)particles.splice(i,1);}
+  updateFX(dt);updateShockwaves(dt);
+  deathTimer-=dt;
+  if(deathTimer<=0)triggerGameOver();
 }
 
 // ─── Update ───────────────────────────────────────────────────────────────────
@@ -1811,6 +1893,7 @@ function update(dt){
   player.prevX=player.x;player.prevY=player.y;
   for(const e of entities){e.prevX=e.x;e.prevY=e.y;}
   prevBgOffsetY=bgOffsetY;
+  if(gameState==='dying'){updateDeath(dt);return;}   // M4: animate the death explosion
   if(gameState!=='playing')return;
 
   // Hit-stop: freeze the sim for 1..3 frames after a solid impact (render still runs).
@@ -1922,6 +2005,8 @@ function update(dt){
   const dpx=cameraSpeed*dt;
   player.distance+=dpx;
   player.score+=dpx/10;
+  if(player.speed>player.topSpeed)player.topSpeed=player.speed;            // run stats for scoreRun()
+  if(player.multiplier>player.bestCombo)player.bestCombo=player.multiplier;
 
   // ── §5.3 Fuel is the core timer / game-over condition ─────────────────────────
   if(player.invulnerable>0)player.invulnerable-=dt;
@@ -2136,7 +2221,7 @@ function update(dt){
     p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;
     if(p.life<=0)particles.splice(i,1);
   }
-  updateFX(dt);
+  updateFX(dt);updateShockwaves(dt);
   updateDecals(dt);
 
   // Multiplayer publish
@@ -2267,6 +2352,7 @@ function draw(){
 
   // FX overlay (additive: explosions, turbo, sparks, smoke, nitro ring, overheat fire)
   drawFXLayer();
+  drawShockwaves();   // M4: game-over explosion rings
 
   // Opponent ghost (multiplayer)
   if(ghost.visible){
@@ -2560,6 +2646,10 @@ function render(alpha){
   draw();
   if(shaking)ctx.restore();
   drawImpactOverlay();   // flash/vignette/rage in screen space (not shaken)
+  if(gameState==='dying'){   // M4: dim the frozen frame as the death sequence plays out
+    const k=Math.min(1,1-deathTimer/DEATH_DUR);
+    ctx.fillStyle='rgba(6,8,14,'+(0.42*k).toFixed(3)+')';ctx.fillRect(0,0,800,600);
+  }
   player.x=pX;player.y=pY;
   entities.forEach((e,i)=>{e.x=saved[i][0];e.y=saved[i][1];});
   bgOffsetY=bo;
@@ -2633,16 +2723,14 @@ function startGame(){
 }
 
 function triggerGameOver(){
-  applyImpact(player.x+16,player.y+24,1.0,'gameover');   // the one reserved big-explosion moment
   gameState='gameover';
   stopMusic();   // M3c: stop backing track on game over
-  el('final-score').textContent=Math.floor(player.score);
-  // Populate stats
+  lastRunScore=scoreRun();   // single source of truth for the final score
+  el('final-score').textContent=lastRunScore;
+  // Run stats: distance, top speed, best combo, near misses
   el('go-distance').textContent=(player.distance/1000).toFixed(1)+' km';
-  const gm=Math.floor(player.playTime/60);
-  const gs=Math.floor(player.playTime%60);
-  el('go-time').textContent=`${gm}:${String(gs).padStart(2,'0')}`;
-  el('go-topgear').textContent=String(topGearReached);
+  el('go-topspeed').textContent=Math.round(player.topSpeed)+' MPH';
+  el('go-bestcombo').textContent='x'+(player.bestCombo||1);
   el('go-nearmiss').textContent=String(nearMissCount);
   showScreen('gameover-screen');
 
@@ -2653,16 +2741,15 @@ function triggerGameOver(){
     else{mpArea.classList.add('hidden');}
   }
 
-  // High score check
-  let isHigh=highScores.length<5||player.score>highScores[highScores.length-1].score;
+  // High score: qualify on the final score; show initials entry, else the buttons.
   const hsBox=el('new-highscore-box');
   const btnBox=el('gameover-buttons');
-  const newHigh=isHigh&&player.score>0;
+  const newHigh=HighScoreStore.qualifies(lastRunScore);
   updateGameOverArt(newHigh);   // victory.jpg + top-centre banner when a record is set
   if(newHigh){
     hsBox.classList.add('visible');hsBox.style.display='flex';
     btnBox.style.display='none';
-    el('initials-input').value='';el('initials-input').focus();
+    el('initials-input').value='';try{el('initials-input').focus();}catch(e){}
   }else{
     hsBox.classList.remove('visible');hsBox.style.display='none';
     btnBox.style.display='block';
@@ -2670,23 +2757,23 @@ function triggerGameOver(){
 }
 
 function saveHighScore(){
-  let initials=(el('initials-input').value||'???').toUpperCase();
-  initials=initials.substring(0,3)||'???';
-  highScores.push({name:initials,score:Math.floor(player.score)});
-  highScores.sort((a,b)=>b.score-a.score);
-  if(highScores.length>5)highScores.pop();
-  persistHighScores();   // §H localStorage (try/catch wrapped)
+  const initials=(el('initials-input').value||'???');
+  const idx=HighScoreStore.add(initials,lastRunScore);   // returns the new row's index (−1 if off-board)
   el('new-highscore-box').style.display='none';
   el('gameover-buttons').style.display='block';
   showScreen('highscores-screen');
-  populateHighScores();
+  populateHighScores(idx);
+  sfxPickup&&sfxPickup();
 }
 
-function populateHighScores(){
+function populateHighScores(highlightIdx=-1){
   const list=el('highscore-list');list.innerHTML='';
-  highScores.forEach((hs,i)=>{
+  HighScoreStore.get().forEach((hs,i)=>{
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td style="padding:8px 4px;color:#9ca3af">#${i+1}</td><td style="padding:8px 4px;color:${i===0?'gold':'white'}">${hs.name}</td><td style="padding:8px 4px;text-align:right">${hs.score}</td>`;
+    const isNew=(i===highlightIdx);
+    const nameCol=isNew?'#65f59a':(i===0?'gold':'white');
+    tr.style.background=isNew?'rgba(101,245,154,0.16)':'';
+    tr.innerHTML=`<td style="padding:8px 4px;color:#9ca3af">#${i+1}</td><td style="padding:8px 4px;color:${nameCol}">${hs.name}${isNew?' ◄':''}</td><td style="padding:8px 4px;text-align:right">${hs.score}</td>`;
     list.appendChild(tr);
   });
 }
@@ -2704,6 +2791,16 @@ el('goMenuBtn').onclick=()=>{gameState='menu';showScreen('menu-screen');};
 el('saveHSBtn').onclick=saveHighScore;
 el('hsBackBtn').onclick=()=>{gameState='menu';showScreen('menu-screen');};
 el('splash-screen').addEventListener('click',startFromSplash);
+// M4: Enter in the initials field saves the score (keyboard parity with the Save button).
+el('initials-input').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();saveHighScore();}});
+// M4: tap/click anywhere on the game-over screen restarts — except on the buttons or while
+// entering initials for a new high score.
+el('gameover-screen').addEventListener('pointerdown',e=>{
+  if(gameState!=='gameover')return;
+  if(el('new-highscore-box').classList.contains('visible'))return;   // let them enter initials first
+  if(e.target.closest('button,input,a'))return;                      // don't hijack the buttons
+  startGame();
+});
 
 </script>
 </body>
