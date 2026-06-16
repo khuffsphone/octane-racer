@@ -112,17 +112,21 @@ Branch: `agent-claude/phase4-scenery` (off `main`)
 - **Pending manual/browser QA:** the look/feel of the skyline depth, spectator animation, and
   billboard spacing.
 
-### ⚠️ Assumption / blocker logged
-- The **11 sign PNGs were not on the container filesystem** (only the older screen-art JPGs are
-  present) — same as the screen-art backdrops earlier. Per the brief's built-in fallback I shipped
-  the full system with the **procedural fallback panel** and the 11 keys **wired for drop-in**;
-  billboards light up with the real art the moment the base64 is inlined (a quick follow-up pass).
-  So Task 4's "inline the 11 signs" is **pending the files**; everything else is complete.
-- Budget: no new bytes inlined yet (signs pending). Footprint stays **~2.24 MB / 3 MB**; projected
-  **~2.43 MB** once the 11 signs are inlined (pngquant ~13 KB each) — still under 3 MB.
+### Signs inlined (follow-up — files supplied)
+- The 12 supplied source JPGs are each a 2×2 grid of billboard panels (48 total). I sliced them,
+  picked **11 distinct panels** (inset to trim the magenta gutter, keep the neon frame), resized to
+  **104×176 portrait**, JPEG q74, and **inlined all 11 as base64** into `assetManifest` (replacing
+  the placeholder paths); `asset-manifest.json` flipped to `integrated`. `drawBillboard` is now a
+  portrait sign panel (46×72) on a post.
+- **Key→panel mapping is best-effort/thematic** (decorative art; key names are internal): GuyShake/
+  GirlIcecream/GuyBurger from img0, GuyEnergy img1, GirlSoda img2, GirlShake/GirlBurger img3, and
+  Gas/Cone/Chili/Palm from the object images (img9–10). The Cone/Chili mascots are both pepper-ish —
+  a minor cosmetic quirk, easily reswapped if you want.
+- **Budget:** 11 signs ≈ 61 KB JPEG / **+84.6 KB** base64. Shipped footprint **2.32 MB / 3 MB** —
+  under budget.
 
 ### Build size
-`index.html` **+3.8 KB** (code only). No asset-budget impact yet.
+`index.html` **+3.8 KB** code + **84.6 KB** inlined signs → 1.32 MB.
 
 ---
 
