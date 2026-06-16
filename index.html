@@ -1629,12 +1629,38 @@ function drawImpactOverlay(){
 }
 
 // ─── Phase 3: obstacles (collide like traffic; procedural striped barrier) ─────
-function drawObstacle(x,y,w,h){
-  ctx.save();ctx.translate(x,y);
-  ctx.fillStyle='#15151c';ctx.fillRect(0,0,w,h);
-  ctx.fillStyle='#ffae00';
-  for(let i=-h;i<w;i+=14){ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i+7,0);ctx.lineTo(i+7-h,h);ctx.lineTo(i-h,h);ctx.closePath();ctx.fill();}
-  ctx.fillStyle='#0a0a0f';ctx.fillRect(0,0,w,4);ctx.fillRect(0,h-4,w,4);
+// Phase 3: spawn one obstacle in an open lane. Weighted: cones common (light clip),
+// barriers (hard crash), oil slicks (surface hazard → hydroplane). All procedural.
+function spawnObstacle(){
+  const lane=pickSpawnLane();if(lane<0)return;
+  const cx=laneCenter(lane),r=Math.random();
+  if(r<0.55){
+    entities.push({type:'obstacle',otype:'cone',lane,x:cx-9,y:-56,w:18,h:26,speed:0,passed:true});
+  }else if(r<0.82){
+    entities.push({type:'obstacle',otype:'barrier',lane,x:cx-22,y:-90,w:44,h:30,speed:0,passed:true});
+  }else{
+    entities.push({type:'obstacle',otype:'oilslick',lane,x:cx-27,y:-60,w:54,h:30,speed:0,passed:true,surface:true});
+  }
+}
+function drawObstacle(x,y,w,h,otype,yaw){
+  ctx.save();ctx.translate(x+w/2,y+h/2);if(yaw)ctx.rotate(yaw);ctx.translate(-w/2,-h/2);
+  if(otype==='cone'){
+    ctx.fillStyle='rgba(0,0,0,0.28)';ctx.beginPath();ctx.ellipse(w/2,h-2,w*0.5,3,0,0,Math.PI*2);ctx.fill(); // shadow
+    ctx.fillStyle='#ff6a00';ctx.beginPath();ctx.moveTo(w/2,0);ctx.lineTo(w*0.86,h-4);ctx.lineTo(w*0.14,h-4);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#ffffff';ctx.fillRect(w*0.22,h*0.42,w*0.56,h*0.16);              // reflective band
+    ctx.fillStyle='#d24f00';ctx.fillRect(w*0.06,h-5,w*0.88,5);                       // base
+  }else if(otype==='oilslick'){
+    ctx.fillStyle='rgba(6,6,10,0.85)';ctx.beginPath();ctx.ellipse(w/2,h/2,w*0.5,h*0.46,0,0,Math.PI*2);ctx.fill();
+    ctx.save();ctx.globalCompositeOperation='screen';ctx.globalAlpha=0.5;            // oily sheen
+    ctx.strokeStyle='#2bd6ff';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(w/2,h/2,w*0.42,h*0.36,0,0,Math.PI*1.4);ctx.stroke();
+    ctx.strokeStyle='#ff2bd6';ctx.beginPath();ctx.ellipse(w/2,h/2,w*0.30,h*0.24,0.6,Math.PI*0.4,Math.PI*1.8);ctx.stroke();
+    ctx.restore();
+  }else{ // barrier (striped)
+    ctx.fillStyle='#15151c';ctx.fillRect(0,0,w,h);
+    ctx.fillStyle='#ffae00';
+    for(let i=-h;i<w;i+=14){ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i+7,0);ctx.lineTo(i+7-h,h);ctx.lineTo(i-h,h);ctx.closePath();ctx.fill();}
+    ctx.fillStyle='#0a0a0f';ctx.fillRect(0,0,w,4);ctx.fillRect(0,h-4,w,4);
+  }
   ctx.restore();
 }
 
@@ -2113,12 +2139,11 @@ function update(dt){
   timeSinceLastSpawn+=dt;
   if(timeSinceLastSpawn>=spawnInterval(player.score)){timeSinceLastSpawn=0;spawnEntity();}
 
-  // Phase 3: sparse static obstacles (collide like traffic) in an open lane
+  // Phase 3: sparse static obstacles (cones / barriers / oil slicks) in an open lane
   obstacleTimer-=dt;
   if(obstacleTimer<=0){
-    obstacleTimer=7+Math.random()*5;
-    const lane=pickSpawnLane();
-    if(lane>=0)entities.push({type:'obstacle',lane,x:laneCenter(lane)-22,y:-90,w:44,h:30,speed:0,passed:true});
+    obstacleTimer=5+Math.random()*5;
+    spawnObstacle();
   }
 
   // Phase 4: sparse crossing pedestrians + parallax roadside props
@@ -2163,6 +2188,10 @@ function update(dt){
         e.x+=(targetX-e.x)*4*dt;
       }
     }
+    if(e.type==='obstacle'){
+      if(e.hazCool>0)e.hazCool-=dt;
+      if(e.knocked){e.x+=(e.vx||0)*dt;e.y+=(e.vy||0)*dt;e.vy=(e.vy||0)+240*dt;e.yaw=(e.yaw||0)+(e.spin||0)*dt;} // tumbled cone
+    }
 
     if(player.invulnerable<=0){
       // Collision — classify glancing traffic sideswipes/grinds vs solid crashes.
@@ -2171,12 +2200,28 @@ function update(dt){
         const oy=Math.min(player.y+player.h,e.y+e.h)-Math.max(player.y,e.y);   // vert penetration
         const glancing=(e.type==='traffic'&&ox<player.w*0.5&&oy>ox);            // shallow side contact
         const ix=Math.max(player.x,e.x)+ox/2, iy=Math.max(player.y,e.y)+oy/2;
-        if(glancing&&player.speed>IMPACT.swipeSpeedMin&&(e.swipeCool||0)<=0){
+        if(e.type==='obstacle'){
+          // Per-type reactions, all routed through applyImpact / the existing hazard path.
+          if(e.otype==='oilslick'){
+            if((e.hazCool||0)<=0){handleHydroplane();e.hazCool=1.2;}    // grip loss, NOT a crash — drive through
+          }else if(e.otype==='cone'){
+            if(!e.knocked){                                            // light clip: small impact + tyre scuff
+              applyImpact(ix,iy,0.3,'sideswipe');
+              player.speed*=0.9;
+              const dir=((player.x+player.w/2)<(e.x+e.w/2))?1:-1;
+              e.knocked=true;e.vx=dir*200;e.vy=-90;e.spin=dir*10;        // knock it tumbling off
+              grindScrape(player.x+player.w/2,player.y+player.h-4,IMPACT.grindEvery+1);
+              player.invulnerable=0.18;                                  // brief debounce so one cone = one clip
+            }
+          }else{
+            handleCrash(false);                                         // barrier → hard applyImpact('crash')
+          }
+        }else if(glancing&&player.speed>IMPACT.swipeSpeedMin&&(e.swipeCool||0)<=0){
           sideswipeTraffic(e,ix,iy);                       // shove+spin the car, scrub the player
         }else if(glancing){
           grindScrape(player.x+player.w/2,player.y+player.h-4,dt); // sustained grind → streaks
         }else{
-          handleCrash(false);                              // head-on / obstacle / deep overlap
+          handleCrash(false);                              // head-on / deep overlap
         }
       }
       // §5.6 Near-miss: lateral edge gap 12–35 px → +100×multiplier, chain to ×5.
@@ -2327,7 +2372,7 @@ function draw(){
 
   // Traffic entities
   entities.forEach(e=>{
-    if(e.type==='obstacle'){drawObstacle(e.x,e.y,e.w,e.h);return;}
+    if(e.type==='obstacle'){drawObstacle(e.x,e.y,e.w,e.h,e.otype,e.yaw||0);return;}
     drawCar(e.x,e.y,e.w,e.h,e.color,false,e.yaw||0,e.assetKey||null);   // yaw from sideswipe spin
     // Turn signal blink when switching
     if(e.switchTimer>0&&e.switchTimer<0.5){
