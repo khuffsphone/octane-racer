@@ -10,12 +10,16 @@ Branch: `agent-claude/m3e-fixed-loop` (off `main`)
    leaves the slot empty. Frame→file mapping was verified by a nose-lean silhouette
    metric (not guessed): −0.217=hardL … 0=straight … +0.217=hardR.
 2. **`FixedTimestepLoop`** — accumulator loop, fixed 1/60 step, max-frame clamp (0.25s),
-   ≤8 steps/frame spiral-of-death guard, `lerp()`. **Fix (a):** `visibilitychange` on
-   `document`. **Fix (b):** `manualPaused` flag — never auto-resumes a manual/menu pause
+   ≤8 steps/frame spiral-of-death guard, `lerp()`. **Object-form constructor**
+   `new FixedTimestepLoop({ update, render, onPanic })`; `SIM_DT` is an internal module
+   const (never passed positionally). **`onPanic`** is wired to the spiral-of-death guard —
+   when the loop falls ≥8 steps behind it resets the accumulator and calls `onPanic(frame,
+   steps)` (logs a warning) instead of silently dropping time. **Fix (a):** `visibilitychange`
+   on `document`. **Fix (b):** `manualPaused` flag — never auto-resumes a manual/menu pause
    on tab-return.
 3. **Loop refactor** — `update(dt)` kept; drawing wrapped as `render(alpha)`; the old
-   `requestAnimationFrame(gameLoop)` driver replaced with `new FixedTimestepLoop(update,
-   render, 1/60).start()`. The one wall-clock read in `update()` (a `Date.now` MP-publish
+   `requestAnimationFrame(gameLoop)` driver replaced with `new FixedTimestepLoop({ update,
+   render, onPanic }).start()`. The one wall-clock read in `update()` (a `Date.now` MP-publish
    throttle, dead in solo) is now a `dt` accumulator — `update()` is fully time-source-clean.
 4. **Position buffering** — top of `update()` caches `prevX/prevY` on player + each traffic
    entity and `prevBgOffsetY`. `render(alpha)` interpolates those via `lerp(prev,cur,alpha)`
@@ -27,11 +31,21 @@ Branch: `agent-claude/m3e-fixed-loop` (off `main`)
    frame is absent.
 
 ### Verification
-- `node --check` clean after every task.
-- Headless loop test: ~59 `update(1/60)` steps over 1.0 s at 60/120/144 Hz (constant →
-  refresh-independent); 5 s hitch clamps to 8 steps (no spiral of death).
-- **Pending manual/browser QA:** actual boot-to-title/into-race + visual steer-frame and
-  interpolation smoothness (no browser in this environment).
+- `node --check` clean (inline module extracted and checked) after every edit.
+- Headless determinism harness (loop class run verbatim with a mocked clock/rAF):
+  1.0 s wall-clock → **60 Hz = 59, 120 Hz = 60, 144 Hz = 60** fixed `update(1/60)` steps
+  (refresh-independent); every `update` receives exactly `SIM_DT`; `alpha ∈ [0,1)`.
+  5000 ms single-frame hitch → clamps to **8** steps and fires **exactly one** `onPanic`
+  (no spiral of death).
+- **Browser QA (static server + headless preview):** boots splash → menu → race; canvas HUD
+  (score/speed/nitro/gear/fuel), parallax scenery, pedestrians, obstacles, audio ("SOUND ON")
+  all render; console shows `Assets loaded: 17 + 7 steer` (all frames load, no errors);
+  `onPanic` warning observed under the preview's background-tab rAF throttle (clamps correctly).
+- **Steer mapping confirmed visually (not from filenames):** inspected the PNGs directly —
+  `player_hardR.png` leans nose-up-right, `player_hardL.png` leans nose-up-left; in-game,
+  holding → moved the car right and selected the `*R` frame. **Steering right leans right.** ✓
+- *Caveat:* true high-refresh "no-stutter" smoothness can't be measured on a throttled headless
+  preview; interpolation is logically verified (alpha lerp of cached prev→cur) and visually smooth.
 
 ### Assumptions logged (per autonomy directive)
 - Branched off `main` (M3a only). The 3B HUD (#8), 3C audio (#10), splash (#9) PRs are still
@@ -42,4 +56,22 @@ Branch: `agent-claude/m3e-fixed-loop` (off `main`)
 - MP `Date.now` throttle → `dt` accumulator (dead code in solo; done for determinism).
 
 ### Build size
-`index.html` 245 KB (~+159 KB inlined steer frames, ~+3 KB code). No other asset impact.
+`index.html` ~249 KB on the branch vs ~85 KB on `main` → **+164 KB**, almost entirely the
+7 inlined steer-frame data-URIs (~+159 KB); loop/render/steer code is ~+3 KB. No other asset
+impact (single file, zero new deps).
+
+---
+
+## 3E follow-up (2026-06-15) — object-form loop + onPanic, full QA
+This branch already carried the M3E work; this pass corrected the one spec deviation and
+completed verification:
+- **`FixedTimestepLoop` is now object-form** `new FixedTimestepLoop({ update, render, onPanic })`
+  with `SIM_DT` as an internal const (previously the constructor took `(update, render, step)`
+  positionally). **`onPanic` is wired** to the spiral-of-death guard (was a silent `acc=0`).
+- Re-ran `node --check` (clean) and the headless 60/120/144 Hz + hitch determinism harness
+  (all pass — see Verification above).
+- Completed browser QA on a static preview: boot → race, HUD/splash/audio intact, 7 frames
+  load, and **steering right visibly leans the car right** (verified against the PNG art, not
+  the filenames).
+- Untouched: assets, the splash/HUD/audio merged from `main`, and the procedural `drawCar()`
+  fallback (still used when a steer frame is absent).

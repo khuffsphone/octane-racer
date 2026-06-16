@@ -1826,10 +1826,13 @@ function drawHUD(){
 
 // ─── Game loop ────────────────────────────────────────────────────────────────
 // ─── M3e: deterministic fixed-timestep loop + render interpolation ────────────
+const SIM_DT=1/60;                       // fixed simulation step (internal — never a constructor arg)
 function lerp(a,b,t){return a+(b-a)*t;}
 class FixedTimestepLoop {
-  constructor(update,render,step=1/60){
-    this.update=update;this.render=render;this.step=step;
+  // opts: { update, render, onPanic }. SIM_DT is internal; it is NOT passed positionally.
+  constructor({update,render,onPanic}={}){
+    this.update=update;this.render=render;this.onPanic=onPanic||null;
+    this.step=SIM_DT;
     this.acc=0;this.last=0;this.running=false;this.raf=null;this.maxFrame=0.25;
     this.manualPaused=false;this._wasRunning=false;this._tick=this._tick.bind(this);
     document.addEventListener('visibilitychange',()=>{           // FIX (a): document, not window
@@ -1849,7 +1852,7 @@ class FixedTimestepLoop {
     this.acc+=frame;
     let steps=0;
     while(this.acc>=this.step&&steps<8){this.update(this.step);this.acc-=this.step;steps++;} // fixed 1/60 step
-    if(steps>=8)this.acc=0;                               // spiral-of-death guard
+    if(steps>=8){this.acc=0;if(this.onPanic)this.onPanic(frame,steps);} // spiral-of-death guard → onPanic
     this.render(this.acc/this.step);                      // alpha ∈ [0,1)
     this.raf=requestAnimationFrame(this._tick);
   }
@@ -1867,7 +1870,12 @@ function render(alpha){
   entities.forEach((e,i)=>{e.x=saved[i][0];e.y=saved[i][1];});
   bgOffsetY=bo;
 }
-const fixedLoop=new FixedTimestepLoop(update,render,1/60);
+// onPanic: sim fell ≥8 steps behind (tab stall / heavy GC) — accumulator was reset to avoid
+// a spiral of death; log so the drop is visible rather than silent.
+function onPanic(frame,steps){
+  console.warn(`[M3e] sim panic — clamped ${steps} steps (${Math.round(frame*1000)}ms frame); accumulator reset`);
+}
+const fixedLoop=new FixedTimestepLoop({ update, render, onPanic });
 fixedLoop.start();
 
 // ─── Screen management ────────────────────────────────────────────────────────
